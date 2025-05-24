@@ -11,6 +11,18 @@ import { Summary } from "@/components/tabs/Summary";
 import { KwgnAccount, KwgnExtractResult, KwgnTransactions, FileData, ProcessedFile, FileWithSummary } from "@/lib/kwgn";
 import { hashFile, fileToBase64, formatFileSize, formatCurrency } from "@/lib/utils/file";
 import { useSessionFiles } from "@/lib/hooks/useSessionFiles";
+import {
+  SESSION_STORAGE_UPLOADED_FILES,
+  FILE_ID_PREFIX,
+  ERROR_PROCESSING_FAILED,
+  ERROR_DUPLICATE_HASH,
+  LOCALE_MY,
+  CURRENCY_MY,
+  TAB_SUMMARY,
+  TAB_TRANSACTIONS,
+  TAB_FILES,
+  TAB_OUTPUT
+} from "@/lib/constants";
 
 type TabType = 'summary' | 'transactions' | 'files' | 'output';
 
