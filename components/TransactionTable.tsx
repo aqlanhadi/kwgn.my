@@ -212,14 +212,13 @@ export function TransactionTable({ output }: TransactionTableProps) {
 
   if (parsedResults.length === 0) {
     return (
-      <Card>
+
         <CardHeader>
           <CardTitle>Transaction Table</CardTitle>
           <CardDescription>
             No valid transaction data found in the output. Make sure the files are processed successfully.
           </CardDescription>
         </CardHeader>
-      </Card>
     );
   }
 
