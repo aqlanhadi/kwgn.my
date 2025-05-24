@@ -47,6 +47,19 @@ export default function TransactionsPage() {
     });
   }, [files]);
 
+  // Helper to handle file processing errors
+  function handleFileProcessingError(filesToProcess: ProcessedFile[], errorMsg: string) {
+    const updatedFiles = filesToProcess.map(file => ({
+      ...file,
+      processed: true,
+      error: errorMsg,
+    }));
+    setFiles(prev => {
+      const existing = prev.filter(f => !filesToProcess.some(tf => tf.id === f.id));
+      return [...existing, ...updatedFiles];
+    });
+  }
+
   const handleProcessFiles = async (filesToProcess: ProcessedFile[]) => {
     setIsProcessing(true);
     
@@ -94,29 +107,11 @@ export default function TransactionsPage() {
         setAllHashes(prev => [...prev, ...(result.hashes || [])]);
       } else {
         // Handle error case
-        const updatedFiles = filesToProcess.map(file => ({
-          ...file,
-          processed: true,
-          error: result.error || "Processing failed",
-        }));
-        
-        setFiles(prev => {
-          const existing = prev.filter(f => !filesToProcess.some(tf => tf.id === f.id));
-          return [...existing, ...updatedFiles];
-        });
+        handleFileProcessingError(filesToProcess, result.error || "Processing failed");
       }
     } catch (error) {
       console.error("Error processing files:", error);
-      const updatedFiles = filesToProcess.map(file => ({
-        ...file,
-        processed: true,
-        error: "Processing failed",
-      }));
-      
-      setFiles(prev => {
-        const existing = prev.filter(f => !filesToProcess.some(tf => tf.id === f.id));
-        return [...existing, ...updatedFiles];
-      });
+      handleFileProcessingError(filesToProcess, "Processing failed");
     } finally {
       setIsProcessing(false);
     }
