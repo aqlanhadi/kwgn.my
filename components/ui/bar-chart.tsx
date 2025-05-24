@@ -1,0 +1,1239 @@
+"use client"
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Based on Tremor BarChart [v0.0.0]
+import React from "react"
+import { RiArrowLeftSLine, RiArrowRightSLine } from "@remixicon/react"
+import {
+  Bar,
+  CartesianGrid,
+  Label,
+  BarChart as RechartsBarChart,
+  Legend as RechartsLegend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts"
+import { AxisDomain } from "recharts/types/util/types"
+
+import {
+  AvailableChartColors,
+  AvailableChartColorsKeys,
+  getYAxisDomain,
+} from "@/lib/chartUtils"
+import useOnWindowResize from "@/lib/hooks/useOnWindowResize"
+import { cn } from "@/lib/utils"
+
+//#region Shape
+function deepEqual(obj1: any, obj2: any) {
+  if (obj1 === obj2) return true
+
+  if (
+    typeof obj1 !== "object" ||
+    typeof obj2 !== "object" ||
+    obj1 === null ||
+    obj2 === null
+  )
+    return false
+
+  const keys1 = Object.keys(obj1)
+  const keys2 = Object.keys(obj2)
+
+  if (keys1.length !== keys2.length) return false
+
+  for (const key of keys1) {
+    if (!keys2.includes(key) || !deepEqual(obj1[key], obj2[key])) return false
+  }
+
+  return true
+}
+
+const renderShape = (
+  props: any,
+  activeBar: any | undefined,
+  activeLegend: string | undefined,
+  layout: string,
+) => {
+  const { fillOpacity, name, payload, value } = props
+  let { x, width, y, height } = props
+
+  if (layout === "horizontal" && height < 0) {
+    y += height
+    height = Math.abs(height) // height must be a positive number
+  } else if (layout === "vertical" && width < 0) {
+    x += width
+    width = Math.abs(width) // width must be a positive number
+  }
+
+  return (
+    <rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      className={cn(
+        value >= 0
+          ? "fill-emerald-600 dark:fill-emerald-500"
+          : "fill-rose-600 dark:fill-rose-500",
+      )}
+      opacity={
+        activeBar || (activeLegend && activeLegend !== name)
+          ? deepEqual(activeBar, { ...payload, value })
+            ? fillOpacity
+            : 0.3
+          : fillOpacity
+      }
+    />
+  )
+}
+
+//#region Legend
+
+interface LegendItemProps {
+  name: string
+  color: AvailableChartColorsKeys
+  onClick?: (name: string, color: AvailableChartColorsKeys) => void
+  activeLegend?: string
+}
+
+const LegendItem = ({
+  name,
+  color,
+  onClick,
+  activeLegend,
+}: LegendItemProps) => {
+  const hasOnValueChange = !!onClick
+  return (
+    <li
+      className={cn(
+        // base
+        "group inline-flex flex-nowrap items-center gap-1.5 whitespace-nowrap rounded-sm px-2 py-1 transition",
+        hasOnValueChange
+          ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+          : "cursor-default",
+      )}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick?.(name, color)
+      }}
+    >
+      <p
+        className={cn(
+          // base
+          "truncate whitespace-nowrap text-xs",
+          // text color
+          "text-gray-700 dark:text-gray-300",
+          hasOnValueChange &&
+            "group-hover:text-gray-900 dark:group-hover:text-gray-50",
+          activeLegend && activeLegend !== name ? "opacity-40" : "opacity-100",
+        )}
+      >
+        {name}
+      </p>
+    </li>
+  )
+}
+
+interface ScrollButtonProps {
+  icon: React.ElementType
+  onClick?: () => void
+  disabled?: boolean
+}
+
+const ScrollButton = ({ icon, onClick, disabled }: ScrollButtonProps) => {
+  const Icon = icon
+  const [isPressed, setIsPressed] = React.useState(false)
+  const intervalRef = React.useRef<NodeJS.Timeout | null>(null)
+
+  React.useEffect(() => {
+    if (isPressed) {
+      intervalRef.current = setInterval(() => {
+        onClick?.()
+      }, 300)
+    } else {
+      clearInterval(intervalRef.current as NodeJS.Timeout)
+    }
+    return () => clearInterval(intervalRef.current as NodeJS.Timeout)
+  }, [isPressed, onClick])
+
+  React.useEffect(() => {
+    if (disabled) {
+      clearInterval(intervalRef.current as NodeJS.Timeout)
+      setIsPressed(false)
+    }
+  }, [disabled])
+
+  return (
+    <button
+      type="button"
+      className={cn(
+        // base
+        "group inline-flex size-5 items-center truncate rounded-sm transition",
+        disabled
+          ? "cursor-not-allowed text-gray-400 dark:text-gray-600"
+          : "cursor-pointer text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-50",
+      )}
+      disabled={disabled}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick?.()
+      }}
+      onMouseDown={(e) => {
+        e.stopPropagation()
+        setIsPressed(true)
+      }}
+      onMouseUp={(e) => {
+        e.stopPropagation()
+        setIsPressed(false)
+      }}
+    >
+      <Icon className="size-full" aria-hidden="true" />
+    </button>
+  )
+}
+
+interface LegendProps extends React.OlHTMLAttributes<HTMLOListElement> {
+  categories: string[]
+  colors?: AvailableChartColorsKeys[]
+  onClickLegendItem?: (category: string, color: string) => void
+  activeLegend?: string
+  enableLegendSlider?: boolean
+}
+
+type HasScrollProps = {
+  left: boolean
+  right: boolean
+}
+
+const Legend = React.forwardRef<HTMLOListElement, LegendProps>((props, ref) => {
+  const {
+    categories,
+    colors = AvailableChartColors,
+    className,
+    onClickLegendItem,
+    activeLegend,
+    enableLegendSlider = false,
+    ...other
+  } = props
+  const scrollableRef = React.useRef<HTMLInputElement>(null)
+  const [hasScroll, setHasScroll] = React.useState<HasScrollProps | null>(null)
+  const [isKeyDowned, setIsKeyDowned] = React.useState<string | null>(null)
+  const intervalRef = React.useRef<NodeJS.Timeout | null>(null)
+
+  const checkScroll = React.useCallback(() => {
+    const scrollable = scrollableRef?.current
+    if (!scrollable) return
+
+    const hasLeftScroll = scrollable.scrollLeft > 0
+    const hasRightScroll =
+      scrollable.scrollWidth - scrollable.clientWidth > scrollable.scrollLeft
+
+    setHasScroll({ left: hasLeftScroll, right: hasRightScroll })
+  }, [setHasScroll])
+
+  const scrollToTest = React.useCallback(
+    (direction: "left" | "right") => {
+      const element = scrollableRef?.current
+      const width = element?.clientWidth ?? 0
+
+      if (element && enableLegendSlider) {
+        element.scrollTo({
+          left:
+            direction === "left"
+              ? element.scrollLeft - width
+              : element.scrollLeft + width,
+          behavior: "smooth",
+        })
+        setTimeout(() => {
+          checkScroll()
+        }, 400)
+      }
+    },
+    [enableLegendSlider, checkScroll],
+  )
+
+  React.useEffect(() => {
+    const keyDownHandler = (key: string) => {
+      if (key === "ArrowLeft") {
+        scrollToTest("left")
+      } else if (key === "ArrowRight") {
+        scrollToTest("right")
+      }
+    }
+    if (isKeyDowned) {
+      keyDownHandler(isKeyDowned)
+      intervalRef.current = setInterval(() => {
+        keyDownHandler(isKeyDowned)
+      }, 300)
+    } else {
+      clearInterval(intervalRef.current as NodeJS.Timeout)
+    }
+    return () => clearInterval(intervalRef.current as NodeJS.Timeout)
+  }, [isKeyDowned, scrollToTest])
+
+  const keyDown = (e: KeyboardEvent) => {
+    e.stopPropagation()
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault()
+      setIsKeyDowned(e.key)
+    }
+  }
+  const keyUp = (e: KeyboardEvent) => {
+    e.stopPropagation()
+    setIsKeyDowned(null)
+  }
+
+  React.useEffect(() => {
+    const scrollable = scrollableRef?.current
+    if (enableLegendSlider) {
+      checkScroll()
+      scrollable?.addEventListener("keydown", keyDown)
+      scrollable?.addEventListener("keyup", keyUp)
+    }
+
+    return () => {
+      scrollable?.removeEventListener("keydown", keyDown)
+      scrollable?.removeEventListener("keyup", keyUp)
+    }
+  }, [checkScroll, enableLegendSlider])
+
+  return (
+    <ol
+      ref={ref}
+      className={cn("relative overflow-hidden", className)}
+      {...other}
+    >
+      <div
+        ref={scrollableRef}
+        tabIndex={0}
+        className={cn(
+          "flex h-full",
+          enableLegendSlider
+            ? hasScroll?.right || hasScroll?.left
+              ? "snap-mandatory items-center overflow-auto pl-4 pr-12 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              : ""
+            : "flex-wrap",
+        )}
+      >
+        {categories.map((category, index) => (
+          <LegendItem
+            key={`item-${index}`}
+            name={category}
+            color={colors[index] as AvailableChartColorsKeys}
+            onClick={onClickLegendItem}
+            activeLegend={activeLegend}
+          />
+        ))}
+      </div>
+      {enableLegendSlider && (hasScroll?.right || hasScroll?.left) ? (
+        <>
+          <div
+            className={cn(
+              // base
+              "absolute bottom-0 right-0 top-0 flex h-full items-center justify-center pr-1",
+              // background color
+              "bg-white dark:bg-gray-950",
+            )}
+          >
+            <ScrollButton
+              icon={RiArrowLeftSLine}
+              onClick={() => {
+                setIsKeyDowned(null)
+                scrollToTest("left")
+              }}
+              disabled={!hasScroll?.left}
+            />
+            <ScrollButton
+              icon={RiArrowRightSLine}
+              onClick={() => {
+                setIsKeyDowned(null)
+                scrollToTest("right")
+              }}
+              disabled={!hasScroll?.right}
+            />
+          </div>
+        </>
+      ) : null}
+    </ol>
+  )
+})
+
+Legend.displayName = "Legend"
+
+const ChartLegend = (
+  { payload }: any,
+  setLegendHeight: React.Dispatch<React.SetStateAction<number>>,
+  activeLegend: string | undefined,
+  onClick?: (category: string, color: string) => void,
+  enableLegendSlider?: boolean,
+  legendPosition?: "left" | "center" | "right",
+  yAxisWidth?: number,
+) => {
+  const legendRef = React.useRef<HTMLDivElement>(null)
+
+  useOnWindowResize(() => {
+    const calculateHeight = (height: number | undefined) =>
+      height ? Number(height) + 15 : 60
+    setLegendHeight(calculateHeight(legendRef.current?.clientHeight))
+  })
+
+  const filteredPayload = payload.filter((item: any) => item.type !== "none")
+
+  const paddingLeft =
+    legendPosition === "left" && yAxisWidth ? yAxisWidth - 8 : 0
+
+  return (
+    <div
+      style={{ paddingLeft: paddingLeft }}
+      ref={legendRef}
+      className={cn(
+        "flex items-center",
+        { "justify-center": legendPosition === "center" },
+        {
+          "justify-start": legendPosition === "left",
+        },
+        { "justify-end": legendPosition === "right" },
+      )}
+    >
+      <Legend
+        categories={filteredPayload.map((entry: any) => entry.value)}
+        onClickLegendItem={onClick}
+        activeLegend={activeLegend}
+        enableLegendSlider={enableLegendSlider}
+      />
+    </div>
+  )
+}
+
+//#region Tooltip
+
+interface ChartTooltipRowProps {
+  value: string
+  name: string
+  color: string
+}
+
+const ChartTooltipRow = ({ value, name, color }: ChartTooltipRowProps) => (
+  <div className="flex items-center justify-between space-x-8">
+    <div className="flex items-center space-x-2">
+      <span
+        aria-hidden="true"
+        className={cn("size-2 shrink-0 rounded-xs", color)}
+      />
+      <p
+        className={cn(
+          // commmon
+          "whitespace-nowrap text-right",
+          // text color
+          "text-gray-700 dark:text-gray-300",
+        )}
+      >
+        {name}
+      </p>
+    </div>
+    <p
+      className={cn(
+        // base
+        "whitespace-nowrap text-right font-medium tabular-nums",
+        // text color
+        "text-gray-900 dark:text-gray-50",
+      )}
+    >
+      {value}
+    </p>
+  </div>
+)
+
+interface ChartTooltipProps {
+  active: boolean | undefined
+  payload: any
+  label: string
+  valueFormatter: (value: number) => string
+}
+
+const ChartTooltip = ({
+  active,
+  payload,
+  label,
+  valueFormatter,
+}: ChartTooltipProps) => {
+  if (active && payload) {
+    const filteredPayload = payload.filter((item: any) => item.type !== "none")
+
+    return (
+      <div
+        className={cn(
+          // base
+          "rounded-md border text-sm shadow-md",
+          // border color
+          "border-gray-200 dark:border-gray-800",
+          // background color
+          "bg-white dark:bg-gray-950",
+        )}
+      >
+        <div
+          className={cn(
+            // base
+            "border-b border-inherit px-4 py-2",
+          )}
+        >
+          <p
+            className={cn(
+              // base
+              "font-medium",
+              // text color
+              "text-gray-900 dark:text-gray-50",
+            )}
+          >
+            {label}
+          </p>
+        </div>
+
+        <div className={cn("space-y-1 px-4 py-2")}>
+          {filteredPayload.map(
+            (
+              { value, name }: { value: number; name: string },
+              index: number,
+            ) => (
+              <ChartTooltipRow
+                key={`id-${index}`}
+                value={valueFormatter(value)}
+                name={name}
+                color={cn(value >= 0 ? "bg-emerald-600" : "bg-rose-500")}
+              />
+            ),
+          )}
+        </div>
+      </div>
+    )
+  }
+  return null
+}
+
+//#region BarChart
+
+type BaseEventProps = {
+  eventType: "category" | "bar"
+  categoryClicked: string
+  [key: string]: number | string
+}
+
+type BarChartEventProps = BaseEventProps | null | undefined
+
+interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
+  data: Record<string, any>[]
+  index: string
+  categories: string[]
+  valueFormatter?: (value: number) => string
+  startEndOnly?: boolean
+  showXAxis?: boolean
+  showYAxis?: boolean
+  showGridLines?: boolean
+  yAxisWidth?: number
+  intervalType?: "preserveStartEnd" | "equidistantPreserveStart"
+  showTooltip?: boolean
+  showLegend?: boolean
+  autoMinValue?: boolean
+  minValue?: number
+  maxValue?: number
+  allowDecimals?: boolean
+  onValueChange?: (value: BarChartEventProps) => void
+  enableLegendSlider?: boolean
+  tickGap?: number
+  xAxisLabel?: string
+  yAxisLabel?: string
+  layout?: "vertical" | "horizontal"
+  type?: "default" | "stacked"
+  legendPosition?: "left" | "center" | "right"
+}
+
+const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
+  (props, forwardedRef) => {
+    const {
+      data = [],
+      categories = [],
+      index,
+      valueFormatter = (value: number) => value.toString(),
+      startEndOnly = false,
+      showXAxis = true,
+      showYAxis = true,
+      showGridLines = true,
+      yAxisWidth = 56,
+      intervalType = "equidistantPreserveStart",
+      showTooltip = true,
+      showLegend = true,
+      autoMinValue = false,
+      minValue,
+      maxValue,
+      allowDecimals = true,
+      className,
+      onValueChange,
+      enableLegendSlider = false,
+      tickGap = 5,
+      xAxisLabel,
+      yAxisLabel,
+      layout = "horizontal",
+      type = "default",
+      legendPosition = "right",
+      ...other
+    } = props
+    const paddingValue = !showXAxis && !showYAxis ? 0 : 20
+    const [legendHeight, setLegendHeight] = React.useState(60)
+    const [activeLegend, setActiveLegend] = React.useState<string | undefined>(
+      undefined,
+    )
+    const [activeBar, setActiveBar] = React.useState<any | undefined>(undefined)
+    const yAxisDomain = getYAxisDomain(autoMinValue, minValue, maxValue)
+    const hasOnValueChange = !!onValueChange
+    const stacked = type === "stacked"
+
+    function onBarClick(data: any, _: any, event: React.MouseEvent) {
+      event.stopPropagation()
+      if (!onValueChange) return
+      if (deepEqual(activeBar, { ...data.payload, value: data.value })) {
+        setActiveLegend(undefined)
+        setActiveBar(undefined)
+        onValueChange?.(null)
+      } else {
+        setActiveLegend(data.tooltipPayload?.[0]?.dataKey)
+        setActiveBar({
+          ...data.payload,
+          value: data.value,
+        })
+        onValueChange?.({
+          eventType: "bar",
+          categoryClicked: data.tooltipPayload?.[0]?.dataKey,
+          ...data.payload,
+        })
+      }
+    }
+
+    function onCategoryClick(dataKey: string) {
+      if (!hasOnValueChange) return
+      if (dataKey === activeLegend && !activeBar) {
+        setActiveLegend(undefined)
+        onValueChange?.(null)
+      } else {
+        setActiveLegend(dataKey)
+        onValueChange?.({
+          eventType: "category",
+          categoryClicked: dataKey,
+        })
+      }
+      setActiveBar(undefined)
+    }
+
+    return (
+      <div
+        ref={forwardedRef}
+        className={cn("h-80 w-full", className)}
+        {...other}
+      >
+        <ResponsiveContainer>
+          <RechartsBarChart
+            data={data}
+            onClick={
+              hasOnValueChange && (activeLegend || activeBar)
+                ? () => {
+                    setActiveBar(undefined)
+                    setActiveLegend(undefined)
+                    onValueChange?.(null)
+                  }
+                : undefined
+            }
+            margin={{
+              bottom: xAxisLabel ? 30 : undefined,
+              left: yAxisLabel ? 20 : undefined,
+              right: yAxisLabel ? 5 : undefined,
+              top: 5,
+            }}
+            layout={layout}
+          >
+            {showGridLines ? (
+              <CartesianGrid
+                className={cn("stroke-gray-200 stroke-1 dark:stroke-gray-800")}
+                horizontal={layout !== "vertical"}
+                vertical={layout === "vertical"}
+              />
+            ) : null}
+            <XAxis
+              hide={!showXAxis}
+              tick={{
+                transform:
+                  layout !== "vertical" ? "translate(0, 6)" : undefined,
+              }}
+              fill=""
+              stroke=""
+              className={cn(
+                // base
+                "text-xs",
+                // text fill
+                "fill-gray-500 dark:fill-gray-500",
+                { "mt-4": layout !== "vertical" },
+              )}
+              tickLine={false}
+              axisLine={false}
+              minTickGap={tickGap}
+              {...(layout !== "vertical"
+                ? {
+                    padding: {
+                      left: paddingValue,
+                      right: paddingValue,
+                    },
+                    dataKey: index,
+                    interval: startEndOnly ? "preserveStartEnd" : intervalType,
+                    ticks: startEndOnly
+                      ? [data[0][index], data[data.length - 1][index]]
+                      : undefined,
+                  }
+                : {
+                    type: "number",
+                    domain: yAxisDomain as AxisDomain,
+                    tickFormatter: valueFormatter,
+                    allowDecimals: allowDecimals,
+                  })}
+            >
+              {xAxisLabel && (
+                <Label
+                  position="insideBottom"
+                  offset={-20}
+                  className="fill-gray-800 text-sm font-medium dark:fill-gray-200"
+                >
+                  {xAxisLabel}
+                </Label>
+              )}
+            </XAxis>
+            <YAxis
+              width={yAxisWidth}
+              hide={!showYAxis}
+              axisLine={false}
+              tickLine={false}
+              fill=""
+              stroke=""
+              className={cn(
+                // base
+                "text-xs",
+                // text fill
+                "fill-gray-500 dark:fill-gray-500",
+              )}
+              tick={{
+                transform:
+                  layout !== "vertical"
+                    ? "translate(-3, 0)"
+                    : "translate(0, 0)",
+              }}
+              {...(layout !== "vertical"
+                ? {
+                    type: "number",
+                    domain: yAxisDomain as AxisDomain,
+                    tickFormatter: valueFormatter,
+                    allowDecimals: allowDecimals,
+                  }
+                : {
+                    dataKey: index,
+                    ticks: startEndOnly
+                      ? [data[0][index], data[data.length - 1][index]]
+                      : undefined,
+                    type: "category",
+                    interval: "equidistantPreserveStart",
+                  })}
+            >
+              {yAxisLabel && (
+                <Label
+                  position="insideLeft"
+                  style={{ textAnchor: "middle" }}
+                  angle={-90}
+                  offset={-15}
+                  className="fill-gray-800 text-sm font-medium dark:fill-gray-200"
+                >
+                  {yAxisLabel}
+                </Label>
+              )}
+            </YAxis>
+            <Tooltip
+              wrapperStyle={{ outline: "none" }}
+              isAnimationActive={true}
+              animationDuration={100}
+              cursor={{ fill: "#d1d5db", opacity: "0.15" }}
+              offset={20}
+              position={{ y: 0 }}
+              content={
+                showTooltip ? (
+                  ({ active, payload, label }) => (
+                    <ChartTooltip
+                      active={active}
+                      payload={payload}
+                      label={label}
+                      valueFormatter={valueFormatter}
+                    />
+                  )
+                ) : (
+                  <></>
+                )
+              }
+            />
+            {showLegend ? (
+              <RechartsLegend
+                verticalAlign="top"
+                height={legendHeight}
+                content={({ payload }) =>
+                  ChartLegend(
+                    { payload },
+                    setLegendHeight,
+                    activeLegend,
+                    hasOnValueChange
+                      ? (clickedLegendItem: string) =>
+                          onCategoryClick(clickedLegendItem)
+                      : undefined,
+                    enableLegendSlider,
+                    legendPosition,
+                    yAxisWidth,
+                  )
+                }
+              />
+            ) : null}
+            {categories.map((category) => (
+              <Bar
+                className={cn(onValueChange ? "cursor-pointer" : "")}
+                key={category}
+                name={category}
+                type="linear"
+                dataKey={category}
+                stackId={stacked ? "stack" : undefined}
+                isAnimationActive={false}
+                fill=""
+                shape={(props: any) =>
+                  renderShape(props, activeBar, activeLegend, layout)
+                }
+                onClick={onBarClick}
+              />
+            ))}
+          </RechartsBarChart>
+        </ResponsiveContainer>
+      </div>
+    )
+  },
+)
+
+BarChart.displayName = "BarChart"
+
+const profitLossData = [
+  {
+    date: "Jan 1",
+    "Profit/Loss": 5000,
+  },
+  {
+    date: "Jan 2",
+    "Profit/Loss": -1200,
+  },
+  {
+    date: "Jan 3",
+    "Profit/Loss": 3500,
+  },
+  {
+    date: "Jan 4",
+    "Profit/Loss": 2200,
+  },
+  {
+    date: "Jan 5",
+    "Profit/Loss": -450,
+  },
+  {
+    date: "Jan 6",
+    "Profit/Loss": 1750,
+  },
+  {
+    date: "Jan 7",
+    "Profit/Loss": 800,
+  },
+  {
+    date: "Jan 8",
+    "Profit/Loss": 3000,
+  },
+  {
+    date: "Jan 9",
+    "Profit/Loss": 500,
+  },
+  {
+    date: "Jan 10",
+    "Profit/Loss": 4500,
+  },
+  {
+    date: "Jan 11",
+    "Profit/Loss": 1100,
+  },
+  {
+    date: "Jan 12",
+    "Profit/Loss": 2700,
+  },
+  {
+    date: "Jan 13",
+    "Profit/Loss": -750,
+  },
+  {
+    date: "Jan 14",
+    "Profit/Loss": 3200,
+  },
+  {
+    date: "Jan 15",
+    "Profit/Loss": -600,
+  },
+  {
+    date: "Jan 16",
+    "Profit/Loss": 2900,
+  },
+  {
+    date: "Jan 17",
+    "Profit/Loss": -1300,
+  },
+  {
+    date: "Jan 18",
+    "Profit/Loss": -4100,
+  },
+  {
+    date: "Jan 19",
+    "Profit/Loss": -600,
+  },
+  {
+    date: "Jan 20",
+    "Profit/Loss": 2500,
+  },
+  {
+    date: "Jan 21",
+    "Profit/Loss": 900,
+  },
+  {
+    date: "Jan 22",
+    "Profit/Loss": 3700,
+  },
+  {
+    date: "Jan 23",
+    "Profit/Loss": -450,
+  },
+  {
+    date: "Jan 24",
+    "Profit/Loss": 3300,
+  },
+  {
+    date: "Jan 25",
+    "Profit/Loss": -850,
+  },
+  {
+    date: "Jan 26",
+    "Profit/Loss": 2800,
+  },
+  {
+    date: "Jan 27",
+    "Profit/Loss": 500,
+  },
+  {
+    date: "Jan 28",
+    "Profit/Loss": 3400,
+  },
+  {
+    date: "Jan 29",
+    "Profit/Loss": 650,
+  },
+  {
+    date: "Jan 30",
+    "Profit/Loss": 3100,
+  },
+  {
+    date: "Jan 31",
+    "Profit/Loss": -1200,
+  },
+]
+
+export const BarChartProfitLossExample = () => {
+  const [value, setValue] = React.useState<BarChartEventProps>(null)
+  return (
+    <>
+      <BarChart
+        className="h-72"
+        data={profitLossData}
+        index="date"
+        categories={["Profit/Loss"]}
+        yAxisWidth={60}
+        onValueChange={(v) => setValue(v)}
+        valueFormatter={(number: number) =>
+          `${Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+            minimumFractionDigits: 0,
+          })
+            .format(number)
+            .toString()}`
+        }
+      />
+      <pre className="mt-8 rounded-md bg-gray-950 p-3 text-sm text-white dark:bg-gray-800">
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    </>
+  )
+}
+
+// Import the kwgn types
+import { kwgnExtractResult } from "@/lib/kwgn"
+
+interface FileWithSummary {
+  extractResult?: kwgnExtractResult;
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  lastModified: number;
+  content: string;
+  processed: boolean;
+  output?: string;
+  error?: string;
+}
+
+interface DailyTransactionFlowChartProps {
+  filesWithSummary: FileWithSummary[];
+}
+
+export const DailyTransactionFlowChart = ({ filesWithSummary }: DailyTransactionFlowChartProps) => {
+  const [value, setValue] = React.useState<BarChartEventProps>(null)
+
+  // Process transaction data to separate money in vs money out
+  const chartData = React.useMemo(() => {
+    if (filesWithSummary.length === 0) return []
+
+    const dailyFlow = new Map<string, { moneyIn: number; moneyOut: number }>()
+
+    // Extract all transactions from all files
+    filesWithSummary.forEach(file => {
+      if (file.extractResult?.transactions) {
+        file.extractResult.transactions.forEach(transaction => {
+          const date = transaction.date
+          const amount = parseFloat(transaction.amount.replace(/[^\d.-]/g, ""))
+          
+          // Get or create entry for this date
+          const current = dailyFlow.get(date) || { moneyIn: 0, moneyOut: 0 }
+          
+          // Handle amounts that already have correct signs
+          if (transaction.type === "credit") {
+            current.moneyIn += amount // amount is already positive
+          } else {
+            current.moneyOut += Math.abs(amount) // amount is negative, so take absolute value
+          }
+          
+          dailyFlow.set(date, current)
+        })
+      }
+    })
+
+    if (dailyFlow.size === 0) return []
+
+    // Convert to chart format and sort by date
+    return Array.from(dailyFlow.entries())
+      .map(([date, { moneyIn, moneyOut }]) => ({
+        date: new Date(date).toLocaleDateString("en-MY", {
+          month: "short",
+          day: "numeric"
+        }),
+        "Money In": Math.round(moneyIn * 100) / 100, // Round to 2 decimal places
+        "Money Out": Math.round(moneyOut * 100) / 100, // Round to 2 decimal places
+        fullDate: date // Keep full date for sorting
+      }))
+      .sort((a, b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime())
+      .map(({ date, "Money In": moneyIn, "Money Out": moneyOut }) => ({
+        date,
+        "Money In": moneyIn,
+        "Money Out": moneyOut
+      }))
+  }, [filesWithSummary])
+
+  if (chartData.length === 0) {
+    return (
+      <div className="text-center text-gray-500 py-8">
+        <p>No transaction data available for chart.</p>
+        <p className="text-sm mt-2">Upload and process some files to see the money in vs money out analysis.</p>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
+          Daily Money In vs Money Out
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Daily breakdown of money coming in (credits) vs money going out (debits)
+        </p>
+      </div>
+      <BarChart
+        className="h-72"
+        data={chartData}
+        index="date"
+        categories={["Money In", "Money Out"]}
+        yAxisWidth={80}
+        onValueChange={(v) => setValue(v)}
+        valueFormatter={(number: number) =>
+          `${Intl.NumberFormat("en-MY", {
+            style: "currency",
+            currency: "MYR",
+            minimumFractionDigits: 0,
+          })
+            .format(number)
+            .toString()}`
+        }
+      />
+      {value && (
+        <div className="mt-4 rounded-md bg-gray-50 p-3 text-sm dark:bg-gray-800">
+          <p className="font-medium text-gray-900 dark:text-gray-50">
+            Selected: {JSON.stringify(value, null, 2)}
+          </p>
+        </div>
+      )}
+    </>
+  )
+}
+
+export const CumulativeCashFlowChart = ({ filesWithSummary }: DailyTransactionFlowChartProps) => {
+  const [value, setValue] = React.useState<BarChartEventProps>(null)
+
+  // Process transaction data to calculate cumulative cash flow
+  const chartData = React.useMemo(() => {
+    if (filesWithSummary.length === 0) return []
+
+    const dailyNetFlow = new Map<string, number>()
+
+    // Debug: Track totals
+    let totalCredits = 0
+    let totalDebits = 0
+    let transactionCount = 0
+
+    // Extract all transactions from all files and calculate net flow per day
+    filesWithSummary.forEach(file => {
+      if (file.extractResult?.transactions) {
+        file.extractResult.transactions.forEach(transaction => {
+          transactionCount++
+          const date = transaction.date
+          const amount = parseFloat(transaction.amount.replace(/[^\d.-]/g, ""))
+          
+          // Debug logging
+          console.log(`Transaction ${transactionCount}: Date=${date}, Type=${transaction.type}, Amount=${amount}`)
+          
+          // Get or create entry for this date
+          const current = dailyNetFlow.get(date) || 0
+          
+          // Simply add the amount since it already has the correct sign
+          // Credits are positive (+3787.55), debits are negative (-306.25)
+          dailyNetFlow.set(date, current + amount)
+          
+          // Update totals for debugging
+          if (transaction.type === "credit") {
+            totalCredits += amount
+          } else if (transaction.type === "debit") {
+            totalDebits += Math.abs(amount) // Track absolute value for debugging
+          }
+        })
+      }
+    })
+
+    // Debug summary
+    console.log(`Total transactions: ${transactionCount}`)
+    console.log(`Total credits: ${totalCredits}`)
+    console.log(`Total debits: ${totalDebits}`)
+    console.log(`Net difference: ${totalCredits - totalDebits}`)
+
+    if (dailyNetFlow.size === 0) return []
+
+    // Sort by date and calculate cumulative values
+    const sortedEntries = Array.from(dailyNetFlow.entries())
+      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+
+    let cumulativeFlow = 0
+    const chartData = sortedEntries.map(([date, netFlow]) => {
+      cumulativeFlow += netFlow
+      console.log(`Date: ${date}, Daily Net: ${netFlow}, Cumulative: ${cumulativeFlow}`)
+      return {
+        date: new Date(date).toLocaleDateString("en-MY", {
+          month: "short",
+          day: "numeric"
+        }),
+        "Cumulative Cash Flow": Math.round(cumulativeFlow * 100) / 100, // Round to 2 decimal places
+        "Daily Net Flow": Math.round(netFlow * 100) / 100 // Also show daily net for reference
+      }
+    })
+
+    console.log('Final chart data:', chartData)
+    return chartData
+  }, [filesWithSummary])
+
+  if (chartData.length === 0) {
+    return (
+      <div className="text-center text-gray-500 py-8">
+        <p>No transaction data available for chart.</p>
+        <p className="text-sm mt-2">Upload and process some files to see the cumulative cash flow analysis.</p>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
+          Cumulative Cash Flow
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Running total of cash flow over time (green = positive, red = negative)
+        </p>
+      </div>
+      <BarChart
+        className="h-72"
+        data={chartData}
+        index="date"
+        categories={["Cumulative Cash Flow"]}
+        yAxisWidth={100}
+        onValueChange={(v) => setValue(v)}
+        valueFormatter={(number: number) =>
+          `${Intl.NumberFormat("en-MY", {
+            style: "currency",
+            currency: "MYR",
+            minimumFractionDigits: 0,
+          })
+            .format(number)
+            .toString()}`
+        }
+        autoMinValue={true}
+      />
+      
+      {/* Debug Table */}
+      <div className="mt-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-3">
+          Debug: Daily Cash Flow Breakdown
+        </h4>
+        <div className="text-xs text-gray-600 dark:text-gray-400">
+          <div className="grid grid-cols-3 gap-4 font-semibold border-b pb-2 mb-2">
+            <div>Date</div>
+            <div>Daily Net Flow</div>
+            <div>Cumulative Flow</div>
+          </div>
+          {chartData.map((item, index) => (
+            <div key={index} className="grid grid-cols-3 gap-4 py-1 border-b border-gray-200 dark:border-gray-700">
+              <div>{item.date}</div>
+              <div className={`font-mono ${item["Daily Net Flow"] >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {item["Daily Net Flow"] >= 0 ? '+' : ''}{item["Daily Net Flow"].toFixed(2)}
+              </div>
+              <div className={`font-mono font-semibold ${item["Cumulative Cash Flow"] >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {item["Cumulative Cash Flow"] >= 0 ? '+' : ''}{item["Cumulative Cash Flow"].toFixed(2)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {value && (
+        <div className="mt-4 rounded-md bg-gray-50 p-3 text-sm dark:bg-gray-800">
+          <p className="font-medium text-gray-900 dark:text-gray-50">
+            Selected: {JSON.stringify(value, null, 2)}
+          </p>
+        </div>
+      )}
+    </>
+  )
+}

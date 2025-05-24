@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { TransactionsTab } from "@/components/tabs/TransactionsTab";
 import { FilesTab } from "@/components/tabs/FilesTab";
 import { OutputTab } from "@/components/tabs/OutputTab";
+import { Summary } from "@/components/tabs/Summary";
 import { kwgnExtractResult } from "@/lib/kwgn";
 
 interface FileData {
@@ -28,7 +29,7 @@ interface FileWithSummary extends ProcessedFile {
   extractResult?: kwgnExtractResult;
 }
 
-type TabType = 'transactions' | 'files' | 'output';
+type TabType = 'summary' | 'transactions' | 'files' | 'output';
 
 export default function TransactionsPage() {
   const [files, setFiles] = useState<ProcessedFile[]>([]);
@@ -36,7 +37,7 @@ export default function TransactionsPage() {
   const [allOutput, setAllOutput] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('transactions');
+  const [activeTab, setActiveTab] = useState<TabType>('summary');
   const router = useRouter();
 
   // Parse files with summary data
@@ -227,6 +228,7 @@ export default function TransactionsPage() {
   }
 
   const tabs = [
+    { id: 'summary' as TabType, label: 'Summary', count: null },
     { id: 'transactions' as TabType, label: 'Transactions', count: filesWithSummary.reduce((sum, file) => sum + (file.extractResult?.transactions.length || 0), 0) },
     { id: 'files' as TabType, label: 'Files', count: filesWithSummary.length },
     { id: 'output' as TabType, label: 'Raw Output', count: null },
@@ -304,6 +306,9 @@ export default function TransactionsPage() {
 
         {/* Tab Content */}
         <div className="px-6">
+          {activeTab === 'summary' && (
+            <Summary filesWithSummary={filesWithSummary} />
+          )}
           {activeTab === 'transactions' && (
             <TransactionsTab allOutput={allOutput} />
           )}
