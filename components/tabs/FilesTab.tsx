@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { KwgnExtractResult } from "@/lib/kwgn";
+import { KwgnExtractResult, FileWithSummary } from "@/lib/kwgn";
 import {
   Table,
   TableHeader,
@@ -12,23 +12,6 @@ import {
   TableCell,
   TableCaption,
 } from "@/components/ui/table";
-
-interface ProcessedFile {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  lastModified: number;
-  content: string;
-  processed: boolean;
-  output?: string;
-  error?: string;
-  extractTypeUsed?: string;
-}
-
-interface FileWithSummary extends ProcessedFile {
-  extractResult?: KwgnExtractResult;
-}
 
 interface FilesTabProps {
   filesWithSummary: FileWithSummary[];

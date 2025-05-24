@@ -16,6 +16,20 @@ async function hashFile(file: File): Promise<string> {
   return crypto.createHash('sha256').update(Buffer.from(arrayBuffer)).digest('hex');
 }
 
+export type ProcessFilesResult =
+  | {
+      success: true;
+      transactions: (KwgnTransactions & { source: string; accountType: string })[];
+      hashes: string[];
+      extractedResults: KwgnExtractResult[];
+      fileResults: { output: string; extractTypeUsed: string | null; error?: string }[];
+      message: string;
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
 export async function processFiles(formData: FormData) {
   try {
     const outputs: string[] = [];

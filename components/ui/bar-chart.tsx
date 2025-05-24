@@ -974,20 +974,7 @@ export const BarChartProfitLossExample = () => {
 }
 
 // Import the kwgn types
-import { KwgnExtractResult } from "@/lib/kwgn"
-
-interface FileWithSummary {
-  extractResult?: KwgnExtractResult;
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  lastModified: number;
-  content: string;
-  processed: boolean;
-  output?: string;
-  error?: string;
-}
+import { KwgnExtractResult, FileWithSummary } from "@/lib/kwgn"
 
 interface DailyTransactionFlowChartProps {
   filesWithSummary: FileWithSummary[];

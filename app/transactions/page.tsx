@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { processFiles } from "@/app/actions";
+import { processFiles, ProcessFilesResult } from "@/app/actions";
 import { cn } from "@/lib/utils";
 import { TransactionsTab } from "@/components/tabs/TransactionsTab";
 import { FilesTab } from "@/components/tabs/FilesTab";
@@ -113,7 +113,7 @@ export default function TransactionsPage() {
         const updatedFiles = filesToProcess.map((file, index) => ({
           ...file,
           processed: true,
-          output: result.outputs?.[index] || "Processed successfully",
+          output: result.fileResults?.[index]?.output || "Processed successfully",
           extractTypeUsed: result.fileResults?.[index]?.extractTypeUsed ?? null,
         }));
         
@@ -123,12 +123,11 @@ export default function TransactionsPage() {
         });
 
         // Append to all output
-        if (result.outputs) {
-          const newOutput = result.outputs.join("\n\n");
+        if (result.fileResults) {
+          const newOutput = result.fileResults.map(r => r.output).join("\n\n");
           setAllOutput(prev => prev ? `${prev}\n\n${newOutput}` : newOutput);
         }
 
-        setAccounts(prev => [...prev, ...(result.accounts || [])]);
         setTransactions(prev => [...prev, ...(result.transactions || [])]);
         setAllHashes(prev => [...prev, ...(result.hashes || [])]);
       } else {

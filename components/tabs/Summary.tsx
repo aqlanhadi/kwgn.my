@@ -3,20 +3,7 @@
 import { DailyTransactionFlowChart, CumulativeCashFlowChart } from "@/components/ui/bar-chart"
 import { Card } from "../ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs"
-import { KwgnExtractResult } from "@/lib/kwgn"
-
-interface FileWithSummary {
-  extractResult?: KwgnExtractResult;
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  lastModified: number;
-  content: string;
-  processed: boolean;
-  output?: string;
-  error?: string;
-}
+import { KwgnExtractResult, FileWithSummary } from "@/lib/kwgn"
 
 interface SummaryProps {
   filesWithSummary: FileWithSummary[];
