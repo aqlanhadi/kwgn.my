@@ -20,7 +20,7 @@ export async function processFiles(formData: FormData) {
   try {
     const outputs: string[] = [];
     const accounts: KwgnAccount[] = [];
-    const transactions: (KwgnTransactions & { source: string })[] = [];
+    const transactions: (KwgnTransactions & { source: string, accountType: string })[] = [];
     const files: File[] = [];
     const hashes: string[] = [];
     const fileResults: { output: string; extractTypeUsed: string | null; error?: string }[] = [];
@@ -73,7 +73,7 @@ export async function processFiles(formData: FormData) {
         if (extractOutput && extractOutput.transactions.length > 0) {
           outputs.push(`File: ${file.name}\nKWGN Extract Output (Type: ${extractTypeUsed}):\n${JSON.stringify(extractOutput, null, 2)}\n---`);
           accounts.push(extractOutput.account);
-          transactions.push(...extractOutput.transactions.map(transaction => ({ ...transaction, source: file.name })));
+          transactions.push(...extractOutput.transactions.map(transaction => ({ ...transaction, source: file.name, accountType: extractTypeUsed ?? "" })));
           fileResults.push({ output: outputs[outputs.length - 1], extractTypeUsed });
         } else {
           console.error(`KWGN extraction error for ${file.name}:`, extractError);

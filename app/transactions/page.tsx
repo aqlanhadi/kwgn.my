@@ -8,7 +8,7 @@ import { TransactionsTab } from "@/components/tabs/TransactionsTab";
 import { FilesTab } from "@/components/tabs/FilesTab";
 import { OutputTab } from "@/components/tabs/OutputTab";
 import { Summary } from "@/components/tabs/Summary";
-import { KwgnExtractResult } from "@/lib/kwgn";
+import { KwgnAccount, KwgnExtractResult, KwgnTransactions } from "@/lib/kwgn";
 
 interface FileData {
   name: string;
@@ -35,7 +35,10 @@ type TabType = 'summary' | 'transactions' | 'files' | 'output';
 export default function TransactionsPage() {
   const [files, setFiles] = useState<ProcessedFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [accounts, setAccounts] = useState<KwgnAccount[]>([]);
+  const [transactions, setTransactions] = useState<KwgnTransactions[]>([]);
   const [allOutput, setAllOutput] = useState<string>("");
+  const [allHashes, setAllHashes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('summary');
@@ -144,6 +147,10 @@ export default function TransactionsPage() {
           const newOutput = result.outputs.join("\n\n");
           setAllOutput(prev => prev ? `${prev}\n\n${newOutput}` : newOutput);
         }
+
+        setAccounts(prev => [...prev, ...(result.accounts || [])]);
+        setTransactions(prev => [...prev, ...(result.transactions || [])]);
+        setAllHashes(prev => [...prev, ...(result.hashes || [])]);
       } else {
         // Handle error case
         const updatedFiles = filesToProcess.map(file => ({
@@ -326,7 +333,12 @@ export default function TransactionsPage() {
           )}
 
           {activeTab === 'output' && (
-            <OutputTab allOutput={allOutput} />
+            <OutputTab 
+              allOutput={allOutput} 
+              accounts={accounts} 
+              transactions={transactions} 
+              allHashes={allHashes}
+            />
           )}
         </div>
       </div>
