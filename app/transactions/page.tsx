@@ -183,6 +183,15 @@ export default function TransactionsPage() {
 
   const handleAddMoreFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newFiles = Array.from(e.target.files || []);
+
+    const hashes = await Promise.all(newFiles.map(hashFile));
+    // prevent process if hashes are already in the hashes state
+    if (hashes.some(hash => allHashes.includes(hash))) {
+      console.log("Files with the same hashes already exist. Please remove the files with the same hashes.");
+      alert("Files with the same hashes already exist. Please remove the files with the same hashes.");
+      return;
+    }
+
     if (newFiles.length > 0) {
       const fileData = await Promise.all(
         newFiles.map(async (file, index) => ({
@@ -200,6 +209,16 @@ export default function TransactionsPage() {
       await handleProcessFiles(fileData);
     }
   };
+  
+  async function hashFile(file: File): Promise<string> {
+    const arrayBuffer = await file.arrayBuffer();
+  
+    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  
+    return hashHex;
+  }
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {

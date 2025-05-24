@@ -3,7 +3,7 @@
 import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { extract, KwgnAccount, KwgnTransactions } from '@/lib/kwgn';
+import { extract, KwgnAccount, KwgnExtractResult, KwgnTransactions } from '@/lib/kwgn';
 import crypto from 'crypto';
 
 // Sanitize filename to prevent command injection
@@ -19,7 +19,7 @@ async function hashFile(file: File): Promise<string> {
 export async function processFiles(formData: FormData) {
   try {
     const outputs: string[] = [];
-    const accounts: KwgnAccount[] = [];
+    const extractedResults: KwgnExtractResult[] = [];
     const transactions: (KwgnTransactions & { source: string, accountType: string })[] = [];
     const files: File[] = [];
     const hashes: string[] = [];
@@ -72,7 +72,14 @@ export async function processFiles(formData: FormData) {
 
         if (extractOutput && extractOutput.transactions.length > 0) {
           outputs.push(`File: ${file.name}\nKWGN Extract Output (Type: ${extractTypeUsed}):\n${JSON.stringify(extractOutput, null, 2)}\n---`);
-          accounts.push(extractOutput.account);
+          extractedResults.push({ 
+            total_credit: extractOutput.total_credit,
+            total_debit: extractOutput.total_debit,
+            nett: extractOutput.nett,
+            account: extractOutput.account,
+            source: file.name,
+            transactions: extractOutput.transactions,
+           });
           transactions.push(...extractOutput.transactions.map(transaction => ({ ...transaction, source: file.name, accountType: extractTypeUsed ?? "" })));
           fileResults.push({ output: outputs[outputs.length - 1], extractTypeUsed });
         } else {
@@ -95,7 +102,7 @@ export async function processFiles(formData: FormData) {
       success: true, 
       transactions,
       hashes,
-      accounts,
+      extractedResults,
       outputs,
       fileResults,
       message: `Successfully processed ${files.length} file(s) with kwgn`

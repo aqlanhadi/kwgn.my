@@ -33,7 +33,7 @@ export function OutputTab({ allOutput, accounts, transactions, allHashes }: Outp
         )
       } */}
 
-      {/* {
+      {
         !accounts ? (
           <div className="text-center text-gray-500 py-8">
             No accounts yet. Upload and process some files to see results.
@@ -43,7 +43,7 @@ export function OutputTab({ allOutput, accounts, transactions, allHashes }: Outp
             {JSON.stringify(accounts, null, 2)}
           </pre>
         )
-      } */}
+      }
 
       {
         !transactions ? (
