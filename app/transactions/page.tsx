@@ -23,6 +23,11 @@ import {
   TAB_FILES,
   TAB_OUTPUT
 } from "@/lib/constants";
+import { FileUploadButton } from "@/components/ui/FileUploadButton";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { ProcessingBanner } from "@/components/ui/ProcessingBanner";
+import { BackToHomeButton } from "@/components/ui/BackToHomeButton";
+import { TabNavigation } from "@/components/ui/TabNavigation";
 
 type TabType = 'summary' | 'transactions' | 'files' | 'output';
 
@@ -79,6 +84,19 @@ export default function TransactionsPage() {
       dispatch({ type: "SET_FILES", files: initialFiles });
     }
   }, [initialFiles]);
+
+  // Automatically process any unprocessed files loaded from session
+  useEffect(() => {
+    // Only run after session files are loaded and not currently processing
+    if (!isLoading && hasInitialized && state.files.length > 0 && !isProcessing) {
+      const unprocessedFiles = state.files.filter(f => !f.processed && !f.error);
+      if (unprocessedFiles.length > 0) {
+        handleProcessFiles(unprocessedFiles);
+      }
+    }
+    // We intentionally do not include handleProcessFiles in deps to avoid infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, hasInitialized, state.files, isProcessing]);
 
   // Parse files with summary data
   const filesWithSummary = useMemo(() => {
@@ -224,65 +242,16 @@ export default function TransactionsPage() {
             <p className="text-gray-600 mt-1">Manage and process your files</p>
           </div>
           <div className="flex gap-4">
-            <label
-              htmlFor="add-files"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors"
-            >
-              Add More File
-            </label>
-            <input
-              id="add-files"
-              type="file"
-              onChange={handleAddMoreFiles}
-              className="hidden"
-            />
-            <button
-              onClick={() => router.push("/")}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              Back to Home
-            </button>
+            <FileUploadButton onFilesSelected={handleAddMoreFiles} />
+            <BackToHomeButton />
           </div>
         </div>
 
         {isProcessing && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
-              <span className="text-blue-800">Processing files...</span>
-            </div>
-          </div>
+          <ProcessingBanner />
         )}
 
-        {/* Tab Navigation - Full Width */}
-        <div className="border-b border-gray-200 bg-white mb-6">
-          <nav className="-mb-px flex space-x-8 max-w-7xl mx-auto px-8" aria-label="Tabs">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm",
-                  activeTab === tab.id
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                )}
-              >
-                {tab.label}
-                {tab.count !== null && (
-                  <span className={cn(
-                    "ml-2 py-0.5 px-2 rounded-full text-xs",
-                    activeTab === tab.id
-                      ? "bg-blue-100 text-blue-600"
-                      : "bg-gray-100 text-gray-900"
-                  )}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
-        </div>
+        <TabNavigation tabs={tabs} activeTab={activeTab} setActiveTab={(tabId: string) => setActiveTab(tabId as TabType)} />
 
         {/* Tab Content */}
         <div className="px-6">
