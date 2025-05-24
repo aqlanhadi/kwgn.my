@@ -1,36 +1,154 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KWGN UI
+
+A Next.js web interface for the [KWGN](https://github.com/jethrokuan/kwgn) CLI tool, providing an intuitive way to extract and visualize transaction data from bank statements.
+
+## Features
+
+### 🏦 Transaction Extraction
+- Upload PDF bank statements from supported banks
+- Automatic processing using the KWGN CLI tool
+- Support for multiple statement types (Maybank CASA/MAE, Maybank Credit Card, Touch 'n Go)
+
+### 📊 Transaction Table
+- **Beautiful tabular display** of extracted transactions with sortable columns
+- **Summary cards** showing account details, totals, and net amounts
+- **Advanced filtering** by transaction type (credit/debit) and account
+- **Search functionality** across descriptions, references, and account names
+- **Export to CSV** for further analysis in Excel or other tools
+- **Multi-file support** - combine transactions from multiple statements
+
+### 🎨 Modern UI
+- Built with Next.js 15 and React 19
+- Styled with Tailwind CSS and shadcn/ui components
+- Responsive design that works on desktop and mobile
+- Professional Malaysian Ringgit (MYR) currency formatting
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+1. **KWGN CLI Tool**: Install the [KWGN CLI](https://github.com/jethrokuan/kwgn) tool on your system
+2. **Node.js**: Version 18 or higher
+3. **pnpm**: Package manager (or npm/yarn)
+
+### Installation
+
+1. Clone this repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd kwgn-ui
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+pnpm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+```bash
+cp .env.example .env
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Edit `.env` and set the path to your KWGN configuration:
+```
+KWGN_CONFIG_PATH=/path/to/your/kwgn/config.toml
+```
 
-## Learn More
+4. Start the development server:
+```bash
+pnpm dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Usage
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Processing Bank Statements
 
-## Deploy on Vercel
+1. **Upload Files**: Drag and drop or select PDF bank statements on the home page
+2. **Automatic Processing**: Files are automatically processed when you navigate to the transactions page
+3. **View Results**: See the extracted transaction data in a beautiful table format
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Transaction Table Features
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+#### Summary Cards
+- **Account Information**: View account name, number, and type
+- **Financial Summary**: Total credits, debits, and net amount
+- **Transaction Count**: Number of transactions per file
+
+#### Table Controls
+- **Sorting**: Click column headers to sort by sequence, date, type, or amount
+- **Search**: Use the search bar to find specific transactions by description, reference, or account
+- **Filtering**: Filter by transaction type (credit/debit) or specific account
+- **Export**: Download filtered results as CSV for external analysis
+
+#### Table Columns
+- **Sequence**: Transaction sequence number from the statement
+- **Date**: Transaction date with proper formatting
+- **Description**: Transaction descriptions (may be multiple lines)
+- **Type**: Credit or Debit with color-coded badges
+- **Amount**: Transaction amount in MYR with proper formatting
+- **Balance**: Account balance after the transaction
+- **Reference**: Transaction reference number
+- **Account**: Account name and number
+
+### Supported Statement Types
+
+The app currently supports:
+- **Maybank CASA & MAE**: Current and savings accounts
+- **Maybank Credit Card**: Credit card statements  
+- **Touch 'n Go**: e-wallet statements
+
+## Technology Stack
+
+- **Frontend**: Next.js 15, React 19, TypeScript
+- **Styling**: Tailwind CSS, shadcn/ui components
+- **Processing**: KWGN CLI tool integration
+- **State Management**: React hooks and Context
+- **File Handling**: Server-side processing with temporary files
+
+## Development
+
+### Project Structure
+
+```
+kwgn-ui/
+├── app/                 # Next.js app router pages
+│   ├── actions.ts      # Server actions for file processing
+│   ├── page.tsx        # Home page with file upload
+│   └── transactions/   # Transaction viewing page
+├── components/         # React components
+│   ├── ui/            # shadcn/ui components
+│   ├── FileDropzone.tsx
+│   └── TransactionTable.tsx
+├── lib/
+│   ├── kwgn/          # KWGN CLI integration
+│   └── utils.ts       # Utility functions
+└── public/            # Static assets
+```
+
+### Adding New Statement Types
+
+To add support for new bank statement types:
+
+1. Update the `extract` function in `lib/kwgn/index.ts` to include the new type
+2. Modify the `processFiles` action in `app/actions.ts` to handle the new type
+3. The transaction table will automatically work with any statement type that follows the KWGN output format
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- [KWGN CLI](https://github.com/jethrokuan/kwgn) - The powerful CLI tool for extracting transaction data
+- [shadcn/ui](https://ui.shadcn.com/) - Beautiful and accessible UI components
+- [Next.js](https://nextjs.org/) - The React framework for production
