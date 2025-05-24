@@ -10,18 +10,17 @@ import { OutputTab } from "@/components/tabs/OutputTab";
 import { Summary } from "@/components/tabs/Summary";
 import { KwgnAccount, KwgnExtractResult, KwgnTransactions, FileData, ProcessedFile, FileWithSummary } from "@/lib/kwgn";
 import { hashFile, fileToBase64, formatFileSize, formatCurrency } from "@/lib/utils/file";
+import { useSessionFiles } from "@/lib/hooks/useSessionFiles";
 
 type TabType = 'summary' | 'transactions' | 'files' | 'output';
 
 export default function TransactionsPage() {
-  const [files, setFiles] = useState<ProcessedFile[]>([]);
+  const { files, setFiles, isLoading, hasInitialized } = useSessionFiles();
   const [isProcessing, setIsProcessing] = useState(false);
   const [accounts, setAccounts] = useState<KwgnAccount[]>([]);
   const [transactions, setTransactions] = useState<KwgnTransactions[]>([]);
   const [allOutput, setAllOutput] = useState<string>("");
   const [allHashes, setAllHashes] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasInitialized, setHasInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('summary');
   const router = useRouter();
 
@@ -47,44 +46,6 @@ export default function TransactionsPage() {
       return file;
     });
   }, [files]);
-
-  useEffect(() => {
-    // Only run once when component mounts
-    if (hasInitialized) return;
-    
-    // Wait for client-side hydration
-    const timer = setTimeout(() => {
-      try {
-        const storedFiles = sessionStorage.getItem("uploadedFiles");
-        if (storedFiles) {
-          const fileData: FileData[] = JSON.parse(storedFiles);
-          const processedFiles: ProcessedFile[] = fileData.map((file, index) => ({
-            ...file,
-            id: `file_${Date.now()}_${index}`,
-            processed: false,
-          }));
-          setFiles(processedFiles);
-          
-          // Remove from sessionStorage only after successfully loading
-          sessionStorage.removeItem("uploadedFiles");
-          
-          // Auto-process files on page load
-          handleProcessFiles(processedFiles);
-        } else {
-          // If no files in storage, redirect to home
-          router.push("/");
-        }
-      } catch (error) {
-        console.error("Error loading files from sessionStorage:", error);
-        router.push("/");
-      } finally {
-        setIsLoading(false);
-        setHasInitialized(true);
-      }
-    }, 100); // Small delay to ensure client-side hydration
-
-    return () => clearTimeout(timer);
-  }, [router, hasInitialized]);
 
   const handleProcessFiles = async (filesToProcess: ProcessedFile[]) => {
     setIsProcessing(true);
