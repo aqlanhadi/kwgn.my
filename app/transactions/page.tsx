@@ -8,7 +8,7 @@ import { TransactionsTab } from "@/components/tabs/TransactionsTab";
 import { FilesTab } from "@/components/tabs/FilesTab";
 import { OutputTab } from "@/components/tabs/OutputTab";
 import { Summary } from "@/components/tabs/Summary";
-import { kwgnExtractResult } from "@/lib/kwgn";
+import { KwgnExtractResult } from "@/lib/kwgn";
 
 interface FileData {
   name: string;
@@ -23,10 +23,11 @@ interface ProcessedFile extends FileData {
   processed: boolean;
   output?: string;
   error?: string;
+  extractTypeUsed?: string | null;
 }
 
 interface FileWithSummary extends ProcessedFile {
-  extractResult?: kwgnExtractResult;
+  extractResult?: KwgnExtractResult;
 }
 
 type TabType = 'summary' | 'transactions' | 'files' | 'output';
@@ -52,7 +53,7 @@ export default function TransactionsPage() {
         const jsonMatch = file.output.match(/KWGN Extract Output:\s*(\{[\s\S]*?\})\s*(?:---|\s*$)/);
         if (jsonMatch) {
           const jsonStr = jsonMatch[1].trim();
-          const extractResult = JSON.parse(jsonStr) as kwgnExtractResult;
+          const extractResult = JSON.parse(jsonStr) as KwgnExtractResult;
           return { ...file, extractResult };
         }
       } catch (error) {
@@ -121,6 +122,8 @@ export default function TransactionsPage() {
       });
 
       const result = await processFiles(formData);
+
+      console.log(result);
       
       if (result.success) {
         // Update files with processing results
@@ -128,6 +131,7 @@ export default function TransactionsPage() {
           ...file,
           processed: true,
           output: result.outputs?.[index] || "Processed successfully",
+          extractTypeUsed: result.fileResults?.[index]?.extractTypeUsed ?? null,
         }));
         
         setFiles(prev => {

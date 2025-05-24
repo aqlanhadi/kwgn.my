@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { kwgnExtractResult, kwgnTransaction, kwgnAccount } from "@/lib/kwgn";
+import { KwgnExtractResult, KwgnTransactions, KwgnAccount } from "@/lib/kwgn";
 import { Download, Search, Filter } from "lucide-react";
 
 interface TransactionTableProps {
@@ -34,12 +34,12 @@ interface TransactionTableProps {
 }
 
 interface ParsedResult {
-  extractResult: kwgnExtractResult;
+  extractResult: KwgnExtractResult;
   filename: string;
 }
 
 export function TransactionTable({ output }: TransactionTableProps) {
-  const [sortBy, setSortBy] = useState<keyof kwgnTransaction>("sequence");
+  const [sortBy, setSortBy] = useState<keyof KwgnTransactions>("sequence");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "credit" | "debit">("all");
@@ -61,7 +61,7 @@ export function TransactionTable({ output }: TransactionTableProps) {
         const jsonMatch = fileOutput.match(/KWGN Extract Output:\s*(\{[\s\S]*\})/);
         if (jsonMatch) {
           const jsonStr = jsonMatch[1].trim();
-          const extractResult = JSON.parse(jsonStr) as kwgnExtractResult;
+          const extractResult = JSON.parse(jsonStr) as KwgnExtractResult;
           results.push({ extractResult, filename });
         }
       } catch (error) {
@@ -73,7 +73,7 @@ export function TransactionTable({ output }: TransactionTableProps) {
   }, [output]);
 
   const allTransactions = useMemo(() => {
-    const transactions: (kwgnTransaction & { filename: string; account: kwgnAccount })[] = [];
+    const transactions: (KwgnTransactions & { filename: string; account: KwgnAccount })[] = [];
     
     for (const result of parsedResults) {
       for (const transaction of result.extractResult.transactions) {
@@ -138,7 +138,7 @@ export function TransactionTable({ output }: TransactionTableProps) {
     return Array.from(accounts);
   }, [allTransactions]);
 
-  const handleSort = (column: keyof kwgnTransaction) => {
+  const handleSort = (column: keyof KwgnTransactions) => {
     if (sortBy === column) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {

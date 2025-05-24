@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { kwgnExtractResult } from "@/lib/kwgn";
+import { KwgnExtractResult } from "@/lib/kwgn";
 import {
   Table,
   TableHeader,
@@ -23,10 +23,11 @@ interface ProcessedFile {
   processed: boolean;
   output?: string;
   error?: string;
+  extractTypeUsed?: string;
 }
 
 interface FileWithSummary extends ProcessedFile {
-  extractResult?: kwgnExtractResult;
+  extractResult?: KwgnExtractResult;
 }
 
 interface FilesTabProps {
@@ -88,6 +89,9 @@ export function FilesTab({ filesWithSummary, formatFileSize, formatCurrency }: F
             <TableRow key={file.id}>
               <TableCell>
                 <div className="font-medium text-gray-900">{file.name}</div>
+                {file.extractTypeUsed && (
+                  <div className="text-xs text-blue-600">Extracted as: {file.extractTypeUsed}</div>
+                )}
                 <div className="text-xs text-gray-500">
                   {formatFileSize(file.size)} • {file.type || "Unknown type"}
                 </div>

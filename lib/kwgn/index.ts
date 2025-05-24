@@ -3,7 +3,7 @@ import { promisify } from "util"
 
 const execAsync = promisify(exec)
 
-export interface kwgnAccount {
+export interface KwgnAccount {
     account_number: string
     account_name: string
     account_type: string
@@ -11,7 +11,7 @@ export interface kwgnAccount {
     reconciliable: boolean
 }
 
-export interface kwgnTransaction {
+export interface KwgnTransactions {
     sequence: number
     date: string
     descriptions: string[]
@@ -21,16 +21,16 @@ export interface kwgnTransaction {
     ref: string
 }
 
-export interface kwgnExtractResult {
-    account: kwgnAccount
+export interface KwgnExtractResult {
+    account: KwgnAccount
     nett: string
     source: string
     total_credit: string
     total_debit: string
-    transactions: kwgnTransaction[]
+    transactions: KwgnTransactions[]
 }
 
-export async function extract(file: string, type: 'MAYBANK_CASA_AND_MAE' | 'MAYBANK_2_CC' | 'TNG'): Promise<kwgnExtractResult> {
+export async function extract(file: string, type: 'MAYBANK_CASA_AND_MAE' | 'MAYBANK_2_CC' | 'TNG'): Promise<KwgnExtractResult> {
     const { stdout } = await execAsync(`kwgn extract -f "${file}" --config ${process.env.KWGN_CONFIG_PATH} --statement-type ${type}`)
-    return JSON.parse(stdout) as kwgnExtractResult
+    return JSON.parse(stdout) as KwgnExtractResult
 }

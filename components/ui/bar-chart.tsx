@@ -974,10 +974,10 @@ export const BarChartProfitLossExample = () => {
 }
 
 // Import the kwgn types
-import { kwgnExtractResult } from "@/lib/kwgn"
+import { KwgnExtractResult } from "@/lib/kwgn"
 
 interface FileWithSummary {
-  extractResult?: kwgnExtractResult;
+  extractResult?: KwgnExtractResult;
   id: string;
   name: string;
   size: number;

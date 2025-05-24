@@ -3,17 +3,27 @@
 import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { extract } from '@/lib/kwgn';
+import { extract, KwgnAccount, KwgnTransactions } from '@/lib/kwgn';
+import crypto from 'crypto';
 
 // Sanitize filename to prevent command injection
 function sanitizeFilename(filename: string): string {
   return filename.replace(/[^\w\s.-]/gi, '_');
 }
 
+async function hashFile(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  return crypto.createHash('sha256').update(Buffer.from(arrayBuffer)).digest('hex');
+}
+
 export async function processFiles(formData: FormData) {
   try {
     const outputs: string[] = [];
+    const accounts: KwgnAccount[] = [];
+    const transactions: (KwgnTransactions & { source: string })[] = [];
     const files: File[] = [];
+    const hashes: string[] = [];
+    const fileResults: { output: string; extractTypeUsed: string | null; error?: string }[] = [];
     
     // Extract all files from FormData
     for (const [key, value] of formData.entries()) {
@@ -31,7 +41,9 @@ export async function processFiles(formData: FormData) {
       try {
         // Sanitize filename for security
         const sanitizedName = sanitizeFilename(file.name);
-        const tempFileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${sanitizedName}`;
+        const hash = await hashFile(file);
+        hashes.push(hash);
+        const tempFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}_${sanitizedName}`;
         const tempFilePath = join(tmpdir(), tempFileName);
         
         // Write file to temp location
@@ -39,14 +51,34 @@ export async function processFiles(formData: FormData) {
         const buffer = Buffer.from(arrayBuffer);
         await writeFile(tempFilePath, buffer);
 
-        // Process file using kwgn CLI tool
-        try {
-          const extractOutput = await extract(tempFilePath, 'MAYBANK_CASA_AND_MAE');
-          // Format output to include filename and JSON data
-          outputs.push(`File: ${file.name}\nKWGN Extract Output:\n${JSON.stringify(extractOutput, null, 2)}\n---`);
-        } catch (extractError) {
+        // Try all extract types in order
+        const extractTypes: ('MAYBANK_CASA_AND_MAE' | 'MAYBANK_2_CC' | 'TNG')[] = ['MAYBANK_CASA_AND_MAE', 'MAYBANK_2_CC', 'TNG'];
+        let extractOutput = null;
+        let extractTypeUsed = null;
+        let extractError = null;
+        for (const type of extractTypes) {
+          try {
+            extractOutput = await extract(tempFilePath, type);
+            // if an empty object, try next type
+            if (Object.keys(extractOutput).length === 0) {
+              continue;
+            }
+            extractTypeUsed = type;
+            break; // Success, stop trying
+          } catch (err) {
+            extractError = err;
+          }
+        }
+
+        if (extractOutput && extractOutput.transactions.length > 0) {
+          outputs.push(`File: ${file.name}\nKWGN Extract Output (Type: ${extractTypeUsed}):\n${JSON.stringify(extractOutput, null, 2)}\n---`);
+          accounts.push(extractOutput.account);
+          transactions.push(...extractOutput.transactions.map(transaction => ({ ...transaction, source: file.name })));
+          fileResults.push({ output: outputs[outputs.length - 1], extractTypeUsed });
+        } else {
           console.error(`KWGN extraction error for ${file.name}:`, extractError);
-          outputs.push(`File: ${file.name}\nError: KWGN extraction failed - ${extractError instanceof Error ? extractError.message : 'Unknown error'}\n---`);
+          outputs.push(`File: ${file.name}\nError: KWGN extraction failed for all types - ${extractError instanceof Error ? extractError.message : 'Unknown error'}\n---`);
+          fileResults.push({ output: outputs[outputs.length - 1], extractTypeUsed: null, error: extractError instanceof Error ? extractError.message : 'Unknown error' });
         }
         
         // Clean up temp file
@@ -55,13 +87,18 @@ export async function processFiles(formData: FormData) {
       } catch (fileError) {
         console.error(`Error processing file ${file.name}:`, fileError);
         outputs.push(`File: ${file.name}\nError: Failed to process file - ${fileError instanceof Error ? fileError.message : 'Unknown error'}\n---`);
+        fileResults.push({ output: outputs[outputs.length - 1], extractTypeUsed: null, error: fileError instanceof Error ? fileError.message : 'Unknown error' });
       }
     }
 
     return { 
       success: true, 
+      transactions,
+      hashes,
+      accounts,
       outputs,
-      message: `Successfully processed ${files.length} file(s) with KWGN`
+      fileResults,
+      message: `Successfully processed ${files.length} file(s) with kwgn`
     };
     
   } catch (error) {
