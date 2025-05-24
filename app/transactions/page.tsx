@@ -8,27 +8,7 @@ import { TransactionsTab } from "@/components/tabs/TransactionsTab";
 import { FilesTab } from "@/components/tabs/FilesTab";
 import { OutputTab } from "@/components/tabs/OutputTab";
 import { Summary } from "@/components/tabs/Summary";
-import { KwgnAccount, KwgnExtractResult, KwgnTransactions } from "@/lib/kwgn";
-
-interface FileData {
-  name: string;
-  size: number;
-  type: string;
-  lastModified: number;
-  content: string;
-}
-
-interface ProcessedFile extends FileData {
-  id: string;
-  processed: boolean;
-  output?: string;
-  error?: string;
-  extractTypeUsed?: string | null;
-}
-
-interface FileWithSummary extends ProcessedFile {
-  extractResult?: KwgnExtractResult;
-}
+import { KwgnAccount, KwgnExtractResult, KwgnTransactions, FileData, ProcessedFile, FileWithSummary } from "@/lib/kwgn";
 
 type TabType = 'summary' | 'transactions' | 'files' | 'output';
 
@@ -277,12 +257,11 @@ export default function TransactionsPage() {
               htmlFor="add-files"
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors"
             >
-              Add More Files
+              Add More File
             </label>
             <input
               id="add-files"
               type="file"
-              multiple
               onChange={handleAddMoreFiles}
               className="hidden"
             />

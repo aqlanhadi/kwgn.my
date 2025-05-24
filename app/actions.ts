@@ -103,7 +103,7 @@ export async function processFiles(formData: FormData) {
       transactions,
       hashes,
       extractedResults,
-      outputs,
+      // outputs,
       fileResults,
       message: `Successfully processed ${files.length} file(s) with kwgn`
     };

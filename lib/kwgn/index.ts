@@ -30,6 +30,26 @@ export interface KwgnExtractResult {
     transactions: KwgnTransactions[]
 }
 
+export interface FileData {
+  name: string;
+  size: number;
+  type: string;
+  lastModified: number;
+  content: string;
+}
+
+export interface ProcessedFile extends FileData {
+  id: string;
+  processed: boolean;
+  output?: string;
+  error?: string;
+  extractTypeUsed?: string | null;
+}
+
+export interface FileWithSummary extends ProcessedFile {
+  extractResult?: KwgnExtractResult;
+}
+
 export async function extract(file: string, type: 'MAYBANK_CASA_AND_MAE' | 'MAYBANK_2_CC' | 'TNG'): Promise<KwgnExtractResult> {
     const { stdout } = await execAsync(`kwgn extract -f "${file}" --config ${process.env.KWGN_CONFIG_PATH} --statement-type ${type}`)
     return JSON.parse(stdout) as KwgnExtractResult
