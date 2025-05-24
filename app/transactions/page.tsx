@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import { processFiles, ProcessFilesResult } from "@/app/actions";
 import { cn } from "@/lib/utils";
@@ -14,19 +14,63 @@ import { useSessionFiles } from "@/lib/hooks/useSessionFiles";
 
 type TabType = 'summary' | 'transactions' | 'files' | 'output';
 
+type FileProcessingState = {
+  files: ProcessedFile[];
+  transactions: KwgnTransactions[];
+  allOutput: string;
+  allHashes: string[];
+};
+
+type FileProcessingAction =
+  | { type: "SET_FILES"; files: ProcessedFile[] }
+  | { type: "UPDATE_FILES"; updatedFiles: ProcessedFile[] }
+  | { type: "APPEND_TRANSACTIONS"; transactions: KwgnTransactions[] }
+  | { type: "APPEND_OUTPUT"; output: string }
+  | { type: "APPEND_HASHES"; hashes: string[] };
+
+function fileProcessingReducer(state: FileProcessingState, action: FileProcessingAction): FileProcessingState {
+  switch (action.type) {
+    case "SET_FILES":
+      return { ...state, files: action.files };
+    case "UPDATE_FILES":
+      // Remove files with same ids, then add updated
+      const existing = state.files.filter(f => !action.updatedFiles.some(uf => uf.id === f.id));
+      return { ...state, files: [...existing, ...action.updatedFiles] };
+    case "APPEND_TRANSACTIONS":
+      return { ...state, transactions: [...state.transactions, ...action.transactions] };
+    case "APPEND_OUTPUT":
+      return { ...state, allOutput: state.allOutput ? `${state.allOutput}\n\n${action.output}` : action.output };
+    case "APPEND_HASHES":
+      return { ...state, allHashes: [...state.allHashes, ...action.hashes] };
+    default:
+      return state;
+  }
+}
+
 export default function TransactionsPage() {
-  const { files, setFiles, isLoading, hasInitialized } = useSessionFiles();
+  const { files: initialFiles, setFiles: setSessionFiles, isLoading, hasInitialized } = useSessionFiles();
   const [isProcessing, setIsProcessing] = useState(false);
   const [accounts, setAccounts] = useState<KwgnAccount[]>([]);
-  const [transactions, setTransactions] = useState<KwgnTransactions[]>([]);
-  const [allOutput, setAllOutput] = useState<string>("");
-  const [allHashes, setAllHashes] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('summary');
   const router = useRouter();
 
+  const [state, dispatch] = useReducer(fileProcessingReducer, {
+    files: initialFiles,
+    transactions: [],
+    allOutput: "",
+    allHashes: [],
+  });
+
+  // Keep session files and reducer files in sync
+  useEffect(() => {
+    if (initialFiles.length > 0) {
+      dispatch({ type: "SET_FILES", files: initialFiles });
+    }
+  }, [initialFiles]);
+
   // Parse files with summary data
   const filesWithSummary = useMemo(() => {
-    return files.map((file): FileWithSummary => {
+    return state.files.map((file): FileWithSummary => {
       if (!file.output || file.error) {
         return file;
       }
@@ -45,7 +89,7 @@ export default function TransactionsPage() {
 
       return file;
     });
-  }, [files]);
+  }, [state.files]);
 
   // Helper to handle file processing errors
   function handleFileProcessingError(filesToProcess: ProcessedFile[], errorMsg: string) {
@@ -54,10 +98,7 @@ export default function TransactionsPage() {
       processed: true,
       error: errorMsg,
     }));
-    setFiles(prev => {
-      const existing = prev.filter(f => !filesToProcess.some(tf => tf.id === f.id));
-      return [...existing, ...updatedFiles];
-    });
+    dispatch({ type: "UPDATE_FILES", updatedFiles });
   }
 
   const handleProcessFiles = async (filesToProcess: ProcessedFile[]) => {
@@ -92,19 +133,16 @@ export default function TransactionsPage() {
           extractTypeUsed: result.fileResults?.[index]?.extractTypeUsed ?? null,
         }));
         
-        setFiles(prev => {
-          const existing = prev.filter(f => !filesToProcess.some(tf => tf.id === f.id));
-          return [...existing, ...updatedFiles];
-        });
+        dispatch({ type: "UPDATE_FILES", updatedFiles });
 
         // Append to all output
         if (result.fileResults) {
           const newOutput = result.fileResults.map(r => r.output).join("\n\n");
-          setAllOutput(prev => prev ? `${prev}\n\n${newOutput}` : newOutput);
+          dispatch({ type: "APPEND_OUTPUT", output: newOutput });
         }
 
-        setTransactions(prev => [...prev, ...(result.transactions || [])]);
-        setAllHashes(prev => [...prev, ...(result.hashes || [])]);
+        dispatch({ type: "APPEND_TRANSACTIONS", transactions: result.transactions || [] });
+        dispatch({ type: "APPEND_HASHES", hashes: result.hashes || [] });
       } else {
         // Handle error case
         handleFileProcessingError(filesToProcess, result.error || "Processing failed");
@@ -122,7 +160,7 @@ export default function TransactionsPage() {
 
     const hashes = await Promise.all(newFiles.map(hashFile));
     // prevent process if hashes are already in the hashes state
-    if (hashes.some(hash => allHashes.includes(hash))) {
+    if (hashes.some(hash => state.allHashes.includes(hash))) {
       console.log("Files with the same hashes already exist. Please remove the files with the same hashes.");
       alert("Files with the same hashes already exist. Please remove the files with the same hashes.");
       return;
@@ -136,7 +174,7 @@ export default function TransactionsPage() {
           type: file.type,
           lastModified: file.lastModified,
           content: await fileToBase64(file),
-          id: `file_${Date.now()}_${files.length + index}`,
+          id: `file_${Date.now()}_${state.files.length + index}`,
           processed: false,
         }))
       );
@@ -240,7 +278,7 @@ export default function TransactionsPage() {
             <Summary filesWithSummary={filesWithSummary} />
           )}
           {activeTab === 'transactions' && (
-            <TransactionsTab allOutput={allOutput} />
+            <TransactionsTab allOutput={state.allOutput} />
           )}
 
           {activeTab === 'files' && (
@@ -253,10 +291,10 @@ export default function TransactionsPage() {
 
           {activeTab === 'output' && (
             <OutputTab 
-              allOutput={allOutput} 
+              allOutput={state.allOutput} 
               accounts={accounts} 
-              transactions={transactions} 
-              allHashes={allHashes}
+              transactions={state.transactions} 
+              allHashes={state.allHashes}
             />
           )}
         </div>
