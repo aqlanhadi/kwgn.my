@@ -9,6 +9,7 @@ import { FilesTab } from "@/components/tabs/FilesTab";
 import { OutputTab } from "@/components/tabs/OutputTab";
 import { Summary } from "@/components/tabs/Summary";
 import { KwgnAccount, KwgnExtractResult, KwgnTransactions, FileData, ProcessedFile, FileWithSummary } from "@/lib/kwgn";
+import { hashFile, fileToBase64, formatFileSize, formatCurrency } from "@/lib/utils/file";
 
 type TabType = 'summary' | 'transactions' | 'files' | 'output';
 
@@ -187,41 +188,6 @@ export default function TransactionsPage() {
       // Process new files
       await handleProcessFiles(fileData);
     }
-  };
-  
-  async function hashFile(file: File): Promise<string> {
-    const arrayBuffer = await file.arrayBuffer();
-  
-    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  
-    return hashHex;
-  }
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
-
-  const formatCurrency = (amount: string) => {
-    const num = parseFloat(amount.replace(/[^\d.-]/g, ""));
-    return new Intl.NumberFormat("en-MY", {
-      style: "currency",
-      currency: "MYR",
-    }).format(num);
   };
 
   // Show loading state while initializing
