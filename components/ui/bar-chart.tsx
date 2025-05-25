@@ -24,6 +24,7 @@ import {
 } from "@/lib/chartUtils"
 import useOnWindowResize from "@/lib/hooks/useOnWindowResize"
 import { cn } from "@/lib/utils"
+import { TransactionWithAccount } from "@/app/transactions/page"
 
 //#region Shape
 function deepEqual(obj1: any, obj2: any) {
@@ -977,52 +978,42 @@ export const BarChartProfitLossExample = () => {
 import { KwgnExtractResult, FileWithSummary } from "@/lib/kwgn"
 
 interface DailyTransactionFlowChartProps {
-  filesWithSummary: FileWithSummary[];
+  transactions: TransactionWithAccount[];
 }
 
-export const DailyTransactionFlowChart = ({ filesWithSummary }: DailyTransactionFlowChartProps) => {
+export const DailyTransactionFlowChart = ({ transactions }: DailyTransactionFlowChartProps) => {
   const [value, setValue] = React.useState<BarChartEventProps>(null)
 
   // Process transaction data to separate money in vs money out
   const chartData = React.useMemo(() => {
-    if (filesWithSummary.length === 0) return []
+    if (transactions.length === 0) return []
 
     const dailyFlow = new Map<string, { moneyIn: number; moneyOut: number }>()
 
-    // Extract all transactions from all files
-    filesWithSummary.forEach(file => {
-      if (file.extractResult?.transactions) {
-        file.extractResult.transactions.forEach(transaction => {
-          const date = transaction.date
-          const amount = parseFloat(transaction.amount.replace(/[^\d.-]/g, ""))
-          
-          // Get or create entry for this date
-          const current = dailyFlow.get(date) || { moneyIn: 0, moneyOut: 0 }
-          
-          // Handle amounts that already have correct signs
-          if (transaction.type === "credit") {
-            current.moneyIn += amount // amount is already positive
-          } else {
-            current.moneyOut += Math.abs(amount) // amount is negative, so take absolute value
-          }
-          
-          dailyFlow.set(date, current)
-        })
+    // Extract all transactions
+    transactions.forEach(({ transaction }) => {
+      const date = transaction.date
+      const amount = parseFloat(transaction.amount.replace(/[^\d.-]/g, ""))
+      const current = dailyFlow.get(date) || { moneyIn: 0, moneyOut: 0 }
+      if (transaction.type === "credit") {
+        current.moneyIn += amount
+      } else {
+        current.moneyOut += Math.abs(amount)
       }
+      dailyFlow.set(date, current)
     })
 
     if (dailyFlow.size === 0) return []
 
-    // Convert to chart format and sort by date
     return Array.from(dailyFlow.entries())
       .map(([date, { moneyIn, moneyOut }]) => ({
         date: new Date(date).toLocaleDateString("en-MY", {
           month: "short",
           day: "numeric"
         }),
-        "Money In": Math.round(moneyIn * 100) / 100, // Round to 2 decimal places
-        "Money Out": Math.round(moneyOut * 100) / 100, // Round to 2 decimal places
-        fullDate: date // Keep full date for sorting
+        "Money In": Math.round(moneyIn * 100) / 100,
+        "Money Out": Math.round(moneyOut * 100) / 100,
+        fullDate: date
       }))
       .sort((a, b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime())
       .map(({ date, "Money In": moneyIn, "Money Out": moneyOut }) => ({
@@ -1030,7 +1021,7 @@ export const DailyTransactionFlowChart = ({ filesWithSummary }: DailyTransaction
         "Money In": moneyIn,
         "Money Out": moneyOut
       }))
-  }, [filesWithSummary])
+  }, [transactions])
 
   if (chartData.length === 0) {
     return (
@@ -1079,53 +1070,26 @@ export const DailyTransactionFlowChart = ({ filesWithSummary }: DailyTransaction
   )
 }
 
-export const CumulativeCashFlowChart = ({ filesWithSummary }: DailyTransactionFlowChartProps) => {
+interface CumulativeCashFlowChartProps {
+  transactions: TransactionWithAccount[];
+}
+
+export const CumulativeCashFlowChart = ({ transactions }: CumulativeCashFlowChartProps) => {
   const [value, setValue] = React.useState<BarChartEventProps>(null)
 
   // Process transaction data to calculate cumulative cash flow
   const chartData = React.useMemo(() => {
-    if (filesWithSummary.length === 0) return []
+    if (transactions.length === 0) return []
 
     const dailyNetFlow = new Map<string, number>()
 
-    // Debug: Track totals
-    let totalCredits = 0
-    let totalDebits = 0
-    let transactionCount = 0
-
-    // Extract all transactions from all files and calculate net flow per day
-    filesWithSummary.forEach(file => {
-      if (file.extractResult?.transactions) {
-        file.extractResult.transactions.forEach(transaction => {
-          transactionCount++
-          const date = transaction.date
-          const amount = parseFloat(transaction.amount.replace(/[^\d.-]/g, ""))
-          
-          // Debug logging
-          console.log(`Transaction ${transactionCount}: Date=${date}, Type=${transaction.type}, Amount=${amount}`)
-          
-          // Get or create entry for this date
-          const current = dailyNetFlow.get(date) || 0
-          
-          // Simply add the amount since it already has the correct sign
-          // Credits are positive (+3787.55), debits are negative (-306.25)
-          dailyNetFlow.set(date, current + amount)
-          
-          // Update totals for debugging
-          if (transaction.type === "credit") {
-            totalCredits += amount
-          } else if (transaction.type === "debit") {
-            totalDebits += Math.abs(amount) // Track absolute value for debugging
-          }
-        })
-      }
+    // Extract all transactions and calculate net flow per day
+    transactions.forEach(({ transaction }) => {
+      const date = transaction.date
+      const amount = parseFloat(transaction.amount.replace(/[^\d.-]/g, ""))
+      const current = dailyNetFlow.get(date) || 0
+      dailyNetFlow.set(date, current + amount)
     })
-
-    // Debug summary
-    console.log(`Total transactions: ${transactionCount}`)
-    console.log(`Total credits: ${totalCredits}`)
-    console.log(`Total debits: ${totalDebits}`)
-    console.log(`Net difference: ${totalCredits - totalDebits}`)
 
     if (dailyNetFlow.size === 0) return []
 
@@ -1136,20 +1100,17 @@ export const CumulativeCashFlowChart = ({ filesWithSummary }: DailyTransactionFl
     let cumulativeFlow = 0
     const chartData = sortedEntries.map(([date, netFlow]) => {
       cumulativeFlow += netFlow
-      console.log(`Date: ${date}, Daily Net: ${netFlow}, Cumulative: ${cumulativeFlow}`)
       return {
         date: new Date(date).toLocaleDateString("en-MY", {
           month: "short",
           day: "numeric"
         }),
-        "Cumulative Cash Flow": Math.round(cumulativeFlow * 100) / 100, // Round to 2 decimal places
-        "Daily Net Flow": Math.round(netFlow * 100) / 100 // Also show daily net for reference
+        "Cumulative Cash Flow": Math.round(cumulativeFlow * 100) / 100,
+        "Daily Net Flow": Math.round(netFlow * 100) / 100
       }
     })
-
-    console.log('Final chart data:', chartData)
     return chartData
-  }, [filesWithSummary])
+  }, [transactions])
 
   if (chartData.length === 0) {
     return (
@@ -1186,34 +1147,7 @@ export const CumulativeCashFlowChart = ({ filesWithSummary }: DailyTransactionFl
             .format(number)
             .toString()}`
         }
-        autoMinValue={true}
       />
-      
-      {/* Debug Table */}
-      <div className="mt-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-3">
-          Debug: Daily Cash Flow Breakdown
-        </h4>
-        <div className="text-xs text-gray-600 dark:text-gray-400">
-          <div className="grid grid-cols-3 gap-4 font-semibold border-b pb-2 mb-2">
-            <div>Date</div>
-            <div>Daily Net Flow</div>
-            <div>Cumulative Flow</div>
-          </div>
-          {chartData.map((item, index) => (
-            <div key={index} className="grid grid-cols-3 gap-4 py-1 border-b border-gray-200 dark:border-gray-700">
-              <div>{item.date}</div>
-              <div className={`font-mono ${item["Daily Net Flow"] >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {item["Daily Net Flow"] >= 0 ? '+' : ''}{item["Daily Net Flow"].toFixed(2)}
-              </div>
-              <div className={`font-mono font-semibold ${item["Cumulative Cash Flow"] >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {item["Cumulative Cash Flow"] >= 0 ? '+' : ''}{item["Cumulative Cash Flow"].toFixed(2)}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {value && (
         <div className="mt-4 rounded-md bg-gray-50 p-3 text-sm dark:bg-gray-800">
           <p className="font-medium text-gray-900 dark:text-gray-50">

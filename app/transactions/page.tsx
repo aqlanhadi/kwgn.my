@@ -254,7 +254,7 @@ export default function TransactionsPage() {
         {/* Tab Content */}
         <div className="px-6">
           {activeTab === 'summary' && (
-            <Summary filesWithSummary={filesWithSummary} />
+            <Summary transactions={state.transactions} />
           )}
           {activeTab === 'transactions' && (
             <TransactionsTab transactions={state.transactions} />

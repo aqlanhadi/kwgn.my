@@ -3,13 +3,13 @@
 import { DailyTransactionFlowChart, CumulativeCashFlowChart } from "@/components/ui/bar-chart"
 import { Card } from "../ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs"
-import { KwgnExtractResult, FileWithSummary } from "@/lib/kwgn"
+import { TransactionWithAccount } from "@/app/transactions/page"
 
 interface SummaryProps {
-  filesWithSummary: FileWithSummary[];
+  transactions: TransactionWithAccount[];
 }
 
-export function Summary({ filesWithSummary }: SummaryProps) {
+export function Summary({ transactions }: SummaryProps) {
   return (
     <Card className="p-6">
       <div className="mb-6">
@@ -28,11 +28,11 @@ export function Summary({ filesWithSummary }: SummaryProps) {
         </TabsList>
         
         <TabsContent value="money-flow" className="mt-6">
-          <DailyTransactionFlowChart filesWithSummary={filesWithSummary} />
+          <DailyTransactionFlowChart transactions={transactions} />
         </TabsContent>
         
         <TabsContent value="cumulative" className="mt-6">
-          <CumulativeCashFlowChart filesWithSummary={filesWithSummary} />
+          <CumulativeCashFlowChart transactions={transactions} />
         </TabsContent>
       </Tabs>
     </Card>
