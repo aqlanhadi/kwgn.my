@@ -998,7 +998,7 @@ export const DailyTransactionFlowChart = ({ transactions }: DailyTransactionFlow
       if (transaction.type === "credit") {
         current.moneyIn += amount
       } else {
-        current.moneyOut += Math.abs(amount)
+        current.moneyOut += amount // amount is negative for debits
       }
       dailyFlow.set(date, current)
     })
@@ -1012,7 +1012,7 @@ export const DailyTransactionFlowChart = ({ transactions }: DailyTransactionFlow
           day: "numeric"
         }),
         "Money In": Math.round(moneyIn * 100) / 100,
-        "Money Out": Math.round(moneyOut * 100) / 100,
+        "Money Out": Math.round(moneyOut * 100) / 100, // moneyOut is negative
         fullDate: date
       }))
       .sort((a, b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime())
