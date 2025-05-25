@@ -5,6 +5,7 @@ import { Card } from "../ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs"
 import { TransactionWithAccount } from "@/app/transactions/page"
 import { VisxBarChart } from "../ui/visx-bar-chart"
+import { VisxSankey } from "../ui/visx-sankey"
 import { useContainerWidth } from "@/lib/hooks/useContainerWidth"
 
 interface SummaryProps {
@@ -26,9 +27,11 @@ export function Summary({ transactions }: SummaryProps) {
       </div>
       
       <Tabs defaultValue="money-flow" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="money-flow">Money In vs Out</TabsTrigger>
           <TabsTrigger value="cumulative">Cumulative Cash Flow</TabsTrigger>
+          <TabsTrigger value="sankey">Transaction Flow</TabsTrigger>
+          <TabsTrigger value="visx-bar">Visx Bar Chart</TabsTrigger>
         </TabsList>
         
         <TabsContent value="money-flow" className="mt-6">
@@ -38,11 +41,19 @@ export function Summary({ transactions }: SummaryProps) {
         <TabsContent value="cumulative" className="mt-6">
           <CumulativeCashFlowChart transactions={transactions} />
         </TabsContent>
+        
+        <TabsContent value="sankey" className="mt-6">
+          <div ref={chartRef} className="w-full">
+            <VisxSankey transactions={transactions} width={chartWidth || 800} height={500} />
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="visx-bar" className="mt-6">
+          <div ref={chartRef} className="border-2 border-gray-300 rounded-md p-4 w-full">
+            <VisxBarChart transactions={transactions} width={chartWidth || 600} />
+          </div>
+        </TabsContent>
       </Tabs>
-
-      <div ref={chartRef} className="border-2 border-gray-300 rounded-md p-4 w-full">
-        <VisxBarChart transactions={transactions} width={chartWidth || 600} />
-      </div>
     </Card>
   )
 }
