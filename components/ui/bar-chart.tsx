@@ -74,9 +74,13 @@ const renderShape = (
       width={width}
       height={height}
       className={cn(
-        value >= 0
+        name === "Money In"
           ? "fill-emerald-600 dark:fill-emerald-500"
-          : "fill-rose-600 dark:fill-rose-500",
+          : name === "Money Out"
+            ? "fill-rose-600 dark:fill-rose-500"
+            : value >= 0
+              ? "fill-emerald-600 dark:fill-emerald-500"
+              : "fill-rose-600 dark:fill-rose-500"
       )}
       opacity={
         activeBar || (activeLegend && activeLegend !== name)
@@ -547,6 +551,10 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   layout?: "vertical" | "horizontal"
   type?: "default" | "stacked"
   legendPosition?: "left" | "center" | "right"
+  barColors?: Record<string, string>
+  barGap?: number
+  barCategoryGap?: number
+  barSize?: number
 }
 
 const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
@@ -577,6 +585,10 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       layout = "horizontal",
       type = "default",
       legendPosition = "right",
+      barColors,
+      barGap = 0,
+      barCategoryGap = 0,
+      barSize = 20,
       ...other
     } = props
     const paddingValue = !showXAxis && !showYAxis ? 0 : 20
@@ -650,6 +662,8 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               top: 5,
             }}
             layout={layout}
+            barGap={barGap}
+            barCategoryGap={barCategoryGap}
           >
             {showGridLines ? (
               <CartesianGrid
@@ -803,7 +817,11 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 dataKey={category}
                 stackId={stacked ? "stack" : undefined}
                 isAnimationActive={false}
-                fill=""
+                // @ts-expect-error: position is supported in recharts@2.15.3 but not in types
+                fill={barColors?.[category] || ""}
+                barSize={barSize}
+                // @ts-expect-error: position is supported in recharts@2.15.3 but not in types
+                position="overlay"
                 shape={(props: any) =>
                   renderShape(props, activeBar, activeLegend, layout)
                 }
@@ -1058,6 +1076,13 @@ export const DailyTransactionFlowChart = ({ transactions }: DailyTransactionFlow
             .format(number)
             .toString()}`
         }
+        barColors={{
+          "Money In": "fill-emerald-600 dark:fill-emerald-500",
+          "Money Out": "fill-rose-600 dark:fill-rose-500"
+        }}
+        barGap={0}
+        barCategoryGap={0}
+        barSize={20}
       />
       {value && (
         <div className="mt-4 rounded-md bg-gray-50 p-3 text-sm dark:bg-gray-800">
@@ -1158,3 +1183,58 @@ export const CumulativeCashFlowChart = ({ transactions }: CumulativeCashFlowChar
     </>
   )
 }
+
+// Custom diverging bar shape for overlapping Money In and Money Out
+const DivergingBarShape = (props: any) => {
+  const { x, y, width, height, payload, background } = props;
+  const chartHeight = background ? background.height : 0;
+  const zeroY = y + height; // y position for zero line
+  const moneyIn = payload["Money In"] || 0;
+  const moneyOut = payload["Money Out"] || 0;
+  const scale = props.yAxis ? props.yAxis.scale : undefined;
+
+  // Calculate y positions using the scale if available
+  let yZero = y;
+  let yMoneyIn = y;
+  let yMoneyOut = y;
+  let hMoneyIn = 0;
+  let hMoneyOut = 0;
+  if (scale) {
+    yZero = scale(0);
+    yMoneyIn = scale(Math.max(0, moneyIn));
+    yMoneyOut = scale(Math.min(0, moneyOut));
+    hMoneyIn = Math.abs(yZero - yMoneyIn);
+    hMoneyOut = Math.abs(yZero - yMoneyOut);
+  } else {
+    // fallback: use height
+    hMoneyIn = moneyIn > 0 ? height * (moneyIn / (moneyIn + Math.abs(moneyOut))) : 0;
+    hMoneyOut = moneyOut < 0 ? height * (Math.abs(moneyOut) / (moneyIn + Math.abs(moneyOut))) : 0;
+  }
+
+  return (
+    <g>
+      {/* Money In (green, up) */}
+      {moneyIn > 0 && (
+        <rect
+          x={x}
+          y={yMoneyIn}
+          width={width}
+          height={hMoneyIn}
+          fill="#059669"
+          rx={2}
+        />
+      )}
+      {/* Money Out (red, down) */}
+      {moneyOut < 0 && (
+        <rect
+          x={x}
+          y={yZero}
+          width={width}
+          height={hMoneyOut}
+          fill="#dc2626"
+          rx={2}
+        />
+      )}
+    </g>
+  );
+};

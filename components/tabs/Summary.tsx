@@ -4,12 +4,16 @@ import { DailyTransactionFlowChart, CumulativeCashFlowChart } from "@/components
 import { Card } from "../ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs"
 import { TransactionWithAccount } from "@/app/transactions/page"
+import { VisxBarChart } from "../ui/visx-bar-chart"
+import { useContainerWidth } from "@/lib/hooks/useContainerWidth"
 
 interface SummaryProps {
   transactions: TransactionWithAccount[];
 }
 
 export function Summary({ transactions }: SummaryProps) {
+  const [chartRef, chartWidth] = useContainerWidth<HTMLDivElement>();
+
   return (
     <Card className="p-6">
       <div className="mb-6">
@@ -35,6 +39,10 @@ export function Summary({ transactions }: SummaryProps) {
           <CumulativeCashFlowChart transactions={transactions} />
         </TabsContent>
       </Tabs>
+
+      <div ref={chartRef} className="border-2 border-gray-300 rounded-md p-4 w-full">
+        <VisxBarChart transactions={transactions} width={chartWidth || 600} />
+      </div>
     </Card>
   )
 }
