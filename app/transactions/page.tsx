@@ -31,9 +31,14 @@ import { TabNavigation } from "@/components/ui/TabNavigation";
 
 type TabType = 'summary' | 'transactions' | 'files' | 'output';
 
+export type TransactionWithAccount = {
+  transaction: KwgnTransactions;
+  account: KwgnAccount;
+};
+
 type FileProcessingState = {
   files: FileWithSummary[];
-  transactions: KwgnTransactions[];
+  transactions: TransactionWithAccount[];
   allOutput: string;
   allHashes: string[];
 };
@@ -41,7 +46,7 @@ type FileProcessingState = {
 type FileProcessingAction =
   | { type: "SET_FILES"; files: FileWithSummary[] }
   | { type: "UPDATE_FILES"; updatedFiles: FileWithSummary[] }
-  | { type: "APPEND_TRANSACTIONS"; transactions: KwgnTransactions[] }
+  | { type: "APPEND_TRANSACTIONS"; transactions: TransactionWithAccount[] }
   | { type: "APPEND_OUTPUT"; output: string }
   | { type: "APPEND_HASHES"; hashes: string[] };
 
@@ -50,7 +55,6 @@ function fileProcessingReducer(state: FileProcessingState, action: FileProcessin
     case "SET_FILES":
       return { ...state, files: action.files };
     case "UPDATE_FILES":
-      // Remove files with same ids, then add updated
       const existing = state.files.filter(f => !action.updatedFiles.some(uf => uf.id === f.id));
       return { ...state, files: [...existing, ...action.updatedFiles] };
     case "APPEND_TRANSACTIONS":
@@ -153,7 +157,18 @@ export default function TransactionsPage() {
           dispatch({ type: "APPEND_OUTPUT", output: newOutput });
         }
 
-        dispatch({ type: "APPEND_TRANSACTIONS", transactions: result.transactions || [] });
+        // Build transactions with account info
+        let transactionsWithAccount: TransactionWithAccount[] = [];
+        if (result.extractedResults) {
+          result.extractedResults.forEach((extractResult) => {
+            if (extractResult && extractResult.transactions) {
+              extractResult.transactions.forEach((transaction) => {
+                transactionsWithAccount.push({ transaction, account: extractResult.account });
+              });
+            }
+          });
+        }
+        dispatch({ type: "APPEND_TRANSACTIONS", transactions: transactionsWithAccount });
         dispatch({ type: "APPEND_HASHES", hashes: result.hashes || [] });
       } else {
         // Handle error case
@@ -241,7 +256,7 @@ export default function TransactionsPage() {
             <Summary filesWithSummary={filesWithSummary} />
           )}
           {activeTab === 'transactions' && (
-            <TransactionsTab allOutput={state.allOutput} />
+            <TransactionsTab transactions={state.transactions} />
           )}
 
           {activeTab === 'files' && (
@@ -256,7 +271,7 @@ export default function TransactionsPage() {
             <OutputTab 
               allOutput={state.allOutput} 
               accounts={accounts} 
-              transactions={state.transactions} 
+              transactions={state.transactions.map(t => t.transaction)} 
               allHashes={state.allHashes}
             />
           )}

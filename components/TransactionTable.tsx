@@ -26,98 +26,54 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { KwgnExtractResult, KwgnTransactions, KwgnAccount } from "@/lib/kwgn";
+import { TransactionWithAccount } from "@/app/transactions/page";
 import { Download, Search, Filter } from "lucide-react";
 
 interface TransactionTableProps {
-  output: string;
+  transactions: TransactionWithAccount[];
 }
 
-interface ParsedResult {
-  extractResult: KwgnExtractResult;
-  filename: string;
-}
-
-export function TransactionTable({ output }: TransactionTableProps) {
-  const [sortBy, setSortBy] = useState<keyof KwgnTransactions>("sequence");
+export function TransactionTable({ transactions }: TransactionTableProps) {
+  const [sortBy, setSortBy] = useState<keyof TransactionWithAccount["transaction"]>("sequence");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "credit" | "debit">("all");
   const [accountFilter, setAccountFilter] = useState<string>("all");
 
-  const parsedResults = useMemo(() => {
-    const results: ParsedResult[] = [];
-    
-    // Split output by file separators
-    const fileOutputs = output.split("---").filter(section => section.trim());
-    
-    for (const fileOutput of fileOutputs) {
-      try {
-        // Extract filename
-        const filenameMatch = fileOutput.match(/File: (.+)/);
-        const filename = filenameMatch ? filenameMatch[1].trim() : "Unknown file";
-        
-        // Find JSON content between KWGN Extract Output: and end of section
-        const jsonMatch = fileOutput.match(/KWGN Extract Output:\s*(\{[\s\S]*\})/);
-        if (jsonMatch) {
-          const jsonStr = jsonMatch[1].trim();
-          const extractResult = JSON.parse(jsonStr) as KwgnExtractResult;
-          results.push({ extractResult, filename });
-        }
-      } catch (error) {
-        console.error("Error parsing file output:", error);
-      }
-    }
-    
-    return results;
-  }, [output]);
-
   const allTransactions = useMemo(() => {
-    const transactions: (KwgnTransactions & { filename: string; account: KwgnAccount })[] = [];
-    
-    for (const result of parsedResults) {
-      for (const transaction of result.extractResult.transactions) {
-        transactions.push({
-          ...transaction,
-          filename: result.filename,
-          account: result.extractResult.account,
-        });
-      }
-    }
-    
     return transactions;
-  }, [parsedResults]);
+  }, [transactions]);
 
   const filteredTransactions = useMemo(() => {
     let filtered = allTransactions;
 
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(transaction =>
+      filtered = filtered.filter(({ transaction, account }) =>
         transaction.descriptions.some(desc =>
           desc.toLowerCase().includes(searchTerm.toLowerCase())
         ) ||
         transaction.ref.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.account.account_name.toLowerCase().includes(searchTerm.toLowerCase())
+        account.account_name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Filter by type
     if (typeFilter !== "all") {
-      filtered = filtered.filter(transaction => transaction.type === typeFilter);
+      filtered = filtered.filter(({ transaction }) => transaction.type === typeFilter);
     }
 
     // Filter by account
     if (accountFilter !== "all") {
-      filtered = filtered.filter(transaction => 
-        transaction.account?.account_number === accountFilter
+      filtered = filtered.filter(({ account }) => 
+        account?.account_number === accountFilter
       );
     }
 
     // Sort transactions
     return filtered.sort((a, b) => {
-      const aValue = a[sortBy];
-      const bValue = b[sortBy];
+      const aValue = a.transaction[sortBy];
+      const bValue = b.transaction[sortBy];
       
       if (sortOrder === "asc") {
         return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
@@ -129,16 +85,15 @@ export function TransactionTable({ output }: TransactionTableProps) {
 
   const uniqueAccounts = useMemo(() => {
     const accounts = new Set<string>();
-    allTransactions.forEach(transaction => {
-      // Only add non-empty account numbers
-      if (transaction.account?.account_number && transaction.account.account_number.trim()) {
-        accounts.add(transaction.account.account_number);
+    allTransactions.forEach(({ account }) => {
+      if (account?.account_number && account.account_number.trim()) {
+        accounts.add(account.account_number);
       }
     });
     return Array.from(accounts);
   }, [allTransactions]);
 
-  const handleSort = (column: keyof KwgnTransactions) => {
+  const handleSort = (column: keyof TransactionWithAccount["transaction"]) => {
     if (sortBy === column) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -178,11 +133,10 @@ export function TransactionTable({ output }: TransactionTableProps) {
       "Balance", 
       "Reference",
       "Account Name",
-      "Account Number",
-      "Filename"
+      "Account Number"
     ];
 
-    const csvData = filteredTransactions.map(transaction => [
+    const csvData = filteredTransactions.map(({ transaction, account }) => [
       transaction.sequence,
       transaction.date,
       transaction.descriptions.join(" | "),
@@ -190,9 +144,8 @@ export function TransactionTable({ output }: TransactionTableProps) {
       transaction.amount,
       transaction.balance,
       transaction.ref,
-      transaction.account.account_name,
-      transaction.account.account_number,
-      transaction.filename
+      account.account_name,
+      account.account_number
     ]);
 
     const csvContent = [headers, ...csvData]
@@ -210,15 +163,14 @@ export function TransactionTable({ output }: TransactionTableProps) {
     document.body.removeChild(link);
   };
 
-  if (parsedResults.length === 0) {
+  if (!transactions || transactions.length === 0) {
     return (
-
-        <CardHeader>
-          <CardTitle>Transaction Table</CardTitle>
-          <CardDescription>
-            No valid transaction data found in the output. Make sure the files are processed successfully.
-          </CardDescription>
-        </CardHeader>
+      <CardHeader>
+        <CardTitle>Transaction Table</CardTitle>
+        <CardDescription>
+          No valid transaction data found. Make sure the files are processed successfully.
+        </CardDescription>
+      </CardHeader>
     );
   }
 
@@ -272,7 +224,7 @@ export function TransactionTable({ output }: TransactionTableProps) {
               <SelectContent>
                 <SelectItem value="all">All Accounts</SelectItem>
                 {uniqueAccounts
-                  .filter(account => account && account.trim()) // Extra safety check
+                  .filter(account => account && account.trim())
                   .map(account => (
                     <SelectItem key={account} value={account}>
                       {account}
@@ -318,8 +270,8 @@ export function TransactionTable({ output }: TransactionTableProps) {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredTransactions.map((transaction, index) => (
-                    <TableRow key={`${transaction.filename}-${transaction.sequence}-${index}`}>
+                  filteredTransactions.map(({ transaction, account }, index) => (
+                    <TableRow key={`${transaction.ref}-${transaction.sequence}-${index}`}>
                       <TableCell className="whitespace-nowrap">
                         {formatDate(transaction.date)}
                       </TableCell>
@@ -354,9 +306,9 @@ export function TransactionTable({ output }: TransactionTableProps) {
                       </TableCell>
                       <TableCell className="text-sm">
                         <div>
-                          <div className="font-medium">{transaction.account.account_name}</div>
+                          <div className="font-medium">{account.account_name}</div>
                           <div className="text-muted-foreground font-mono">
-                            {transaction.account.account_number}
+                            {account.account_number}
                           </div>
                         </div>
                       </TableCell>
