@@ -32,15 +32,15 @@ import { TabNavigation } from "@/components/ui/TabNavigation";
 type TabType = 'summary' | 'transactions' | 'files' | 'output';
 
 type FileProcessingState = {
-  files: ProcessedFile[];
+  files: FileWithSummary[];
   transactions: KwgnTransactions[];
   allOutput: string;
   allHashes: string[];
 };
 
 type FileProcessingAction =
-  | { type: "SET_FILES"; files: ProcessedFile[] }
-  | { type: "UPDATE_FILES"; updatedFiles: ProcessedFile[] }
+  | { type: "SET_FILES"; files: FileWithSummary[] }
+  | { type: "UPDATE_FILES"; updatedFiles: FileWithSummary[] }
   | { type: "APPEND_TRANSACTIONS"; transactions: KwgnTransactions[] }
   | { type: "APPEND_OUTPUT"; output: string }
   | { type: "APPEND_HASHES"; hashes: string[] };
@@ -99,30 +99,10 @@ export default function TransactionsPage() {
   }, [isLoading, hasInitialized, state.files, isProcessing]);
 
   // Parse files with summary data
-  const filesWithSummary = useMemo(() => {
-    return state.files.map((file): FileWithSummary => {
-      if (!file.output || file.error) {
-        return file;
-      }
-
-      try {
-        // Extract JSON content from the output
-        const jsonMatch = file.output.match(/KWGN Extract Output:\s*(\{[\s\S]*?\})\s*(?:---|\s*$)/);
-        if (jsonMatch) {
-          const jsonStr = jsonMatch[1].trim();
-          const extractResult = JSON.parse(jsonStr) as KwgnExtractResult;
-          return { ...file, extractResult };
-        }
-      } catch (error) {
-        console.error("Error parsing file output:", error);
-      }
-
-      return file;
-    });
-  }, [state.files]);
+  const filesWithSummary = useMemo(() => state.files, [state.files]);
 
   // Helper to handle file processing errors
-  function handleFileProcessingError(filesToProcess: ProcessedFile[], errorMsg: string) {
+  function handleFileProcessingError(filesToProcess: FileWithSummary[], errorMsg: string) {
     const updatedFiles = filesToProcess.map(file => ({
       ...file,
       processed: true,
@@ -131,7 +111,7 @@ export default function TransactionsPage() {
     dispatch({ type: "UPDATE_FILES", updatedFiles });
   }
 
-  const handleProcessFiles = async (filesToProcess: ProcessedFile[]) => {
+  const handleProcessFiles = async (filesToProcess: FileWithSummary[]) => {
     setIsProcessing(true);
     
     try {
@@ -161,7 +141,9 @@ export default function TransactionsPage() {
           processed: true,
           output: result.fileResults?.[index]?.output || "Processed successfully",
           extractTypeUsed: result.fileResults?.[index]?.extractTypeUsed ?? null,
-        }));
+          extractResult: result.extractedResults?.[index] ?? undefined,
+          error: result.fileResults?.[index]?.error, // Attach error if present
+        })) as FileWithSummary[];
         
         dispatch({ type: "UPDATE_FILES", updatedFiles });
 
