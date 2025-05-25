@@ -8,6 +8,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from "@/components/ui/table";
 import {
   Card,
@@ -270,14 +271,19 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredTransactions.map(({ transaction, account }, index) => (
+                  filteredTransactions.map(({ transaction, account, source }, index) => (
                     <TableRow key={`${transaction.ref}-${transaction.sequence}-${index}`}>
                       <TableCell className="whitespace-nowrap">
                         {formatDate(transaction.date)}
                       </TableCell>
                       <TableCell className="max-w-xs">
                         <div className="space-y-1">
-                          <div className="text-xs text-muted-foreground font-mono">#{transaction.sequence}</div>
+                          <div className="text-xs text-muted-foreground font-mono">
+                            #{transaction.sequence}
+                            {source && (
+                              <span className="ml-2 text-blue-600">from {source}</span>
+                            )}
+                          </div>
                           {transaction.descriptions.map((desc, i) => (
                             <div key={i} className={i === 0 ? "text-sm" : "text-xs text-muted-foreground"}>
                               {desc}
@@ -316,6 +322,26 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
                   ))
                 )}
               </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={3} className="text-right font-semibold">Total</TableCell>
+                  <TableCell className="text-green-700 font-bold text-right">
+                    {formatCurrency(filteredTransactions
+                      .filter(({ transaction }) => transaction.type === "credit")
+                      .reduce((sum, { transaction }) => sum + parseFloat(transaction.amount.replace(/[^\d.-]/g, "")), 0)
+                      .toString()
+                    )}
+                  </TableCell>
+                  <TableCell className="text-red-700 font-bold text-right">
+                    {formatCurrency(filteredTransactions
+                      .filter(({ transaction }) => transaction.type === "debit")
+                      .reduce((sum, { transaction }) => sum + parseFloat(transaction.amount.replace(/[^\d.-]/g, "")), 0)
+                      .toString()
+                    )}
+                  </TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              </TableFooter>
             </Table>
           </div>
         </CardContent>

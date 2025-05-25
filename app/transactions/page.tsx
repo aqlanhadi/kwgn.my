@@ -34,6 +34,7 @@ type TabType = 'summary' | 'transactions' | 'files' | 'output';
 export type TransactionWithAccount = {
   transaction: KwgnTransactions;
   account: KwgnAccount;
+  source?: string;
 };
 
 type FileProcessingState = {
@@ -163,7 +164,7 @@ export default function TransactionsPage() {
           result.extractedResults.forEach((extractResult) => {
             if (extractResult && extractResult.transactions) {
               extractResult.transactions.forEach((transaction) => {
-                transactionsWithAccount.push({ transaction, account: extractResult.account });
+                transactionsWithAccount.push({ transaction, account: extractResult.account, source: (transaction as any).source });
               });
             }
           });
