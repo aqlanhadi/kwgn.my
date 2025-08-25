@@ -3,7 +3,7 @@
 import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { extract, KwgnAccount, KwgnExtractResult, KwgnTransactions } from '@/lib/kwgn';
+import { extract, KwgnExtractResult, KwgnTransactions } from '@/lib/kwgn';
 import crypto from 'crypto';
 
 // Sanitize filename to prevent command injection
@@ -132,7 +132,7 @@ export async function processFiles(formData: FormData) {
 }
 
 // Keep the old function for backward compatibility
-export async function extractTextFromPDF(formData: FormData) {
+async function extractTextFromPDF(formData: FormData) {
   try {
     const file = formData.get("pdf") as File;
     

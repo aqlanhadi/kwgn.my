@@ -30,7 +30,7 @@ export interface KwgnExtractResult {
     transactions: KwgnTransactions[]
 }
 
-export interface FileData {
+interface FileData {
   name: string;
   size: number;
   type: string;
@@ -38,7 +38,7 @@ export interface FileData {
   content: string;
 }
 
-export interface ProcessedFile extends FileData {
+interface ProcessedFile extends FileData {
   id: string;
   processed: boolean;
   output?: string;
@@ -46,7 +46,7 @@ export interface ProcessedFile extends FileData {
   extractTypeUsed?: string | null;
 }
 
-export interface FileWithSummary extends ProcessedFile {
+interface FileWithSummary extends ProcessedFile {
   extractResult?: KwgnExtractResult;
 }
 
