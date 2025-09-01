@@ -23,7 +23,7 @@ export default function RootLayout({
         <script
           defer
           data-domain="kwgn.aqlan.dev"
-          src="https://plausible.aqlan.dev/js/script.file-downloads.tagged-events.js"
+          src="https://plausible.aqlan.dev/js/script.tagged-events.js"
         ></script>
       </head>
       <body className={`${jetBrainsMono.variable} antialiased`}>
