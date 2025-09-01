@@ -226,7 +226,7 @@ export function FileDropzone({
                   className="min-h-[60px] flex items-center justify-center"
                 >
                   <p className="text-md font-medium text-stone-700">
-                    Drop files here or click to browse
+                    Drop financial statements here or click to browse
                   </p>
                 </motion.div>
               )}
