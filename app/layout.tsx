@@ -19,6 +19,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          defer
+          data-domain="plausible.aqlan.dev"
+          src="https://plausible.aqlan.dev/js/script.file-downloads.tagged-events.js"
+        ></script>
+      </head>
       <body className={`${jetBrainsMono.variable} antialiased`}>
         {children}
       </body>
