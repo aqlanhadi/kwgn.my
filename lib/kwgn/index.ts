@@ -53,6 +53,6 @@ interface FileWithSummary extends ProcessedFile {
 export async function extract(file: string, type: 'MAYBANK_CASA_AND_MAE' | 'MAYBANK_2_CC' | 'TNG'): Promise<KwgnExtractResult> {
     // Use the config file from the container path
     const config = "/etc/kwgn/config.yaml";
-    const { stdout } = await execAsync(`kwgn extract -f "${file}" --config ${config} --statement-type ${type}`)
+    const { stdout } = await execAsync(`kwgn extract -f "${file}"`)
     return JSON.parse(stdout) as KwgnExtractResult
 }
