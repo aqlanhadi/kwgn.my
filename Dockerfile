@@ -12,8 +12,7 @@ RUN git clone --depth=1 https://${GITHUB_TOKEN}@github.com/aqlanhadi/kwgn-cli &&
     cd kwgn-cli && \
     go mod download && \
     CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /go/bin/kwgn-cli . && \
-    # Create a basic config file for the CLI
-    echo '---\ndont_reconcile_acc: true' > /go/bin/kwgn-config.yaml && \
+   
     # Remove source code and credentials after building to reduce layer size
     cd / && rm -rf /go/src/* /root/.cache/go-build
 
@@ -23,7 +22,6 @@ FROM alpine AS base
 RUN mkdir -p /etc/kwgn
 
 COPY --from=go-builder /go/bin/kwgn-cli /usr/local/bin/kwgn
-COPY --from=go-builder /go/bin/kwgn-config.yaml /etc/kwgn/config.yaml
 RUN chmod +x /usr/local/bin/kwgn
 
 # Stage 1: Install dependencies
@@ -64,7 +62,6 @@ RUN mkdir -p /etc/kwgn
 
 # Copy only the necessary files for production
 COPY --from=go-builder /go/bin/kwgn-cli /usr/local/bin/kwgn
-COPY --from=go-builder /go/bin/kwgn-config.yaml /etc/kwgn/config.yaml
 RUN chmod +x /usr/local/bin/kwgn && \
     # Remove unnecessary packages and files
     rm -rf /var/cache/apk/* && \
