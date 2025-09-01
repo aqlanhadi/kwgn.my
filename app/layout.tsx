@@ -22,7 +22,7 @@ export default function RootLayout({
       <head>
         <script
           defer
-          data-domain="plausible.aqlan.dev"
+          data-domain="kwgn.aqlan.dev"
           src="https://plausible.aqlan.dev/js/script.file-downloads.tagged-events.js"
         ></script>
       </head>
