@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { processFiles, type ProcessFilesResult } from "@/app/actions";
 import { FileDropzone } from "@/components/FileDropzone";
 import { type CsvRow, toCsvRows, createCsvBlobUrl } from "@/lib/csv";
+import { getDownloadCount } from "@/lib/analytics";
 import { AnimatePresence, motion } from "motion/react";
 import { Download, ArrowLeft } from "lucide-react";
 import {
@@ -14,15 +15,40 @@ import {
 
 // CsvRow moved to lib/csv
 
+const AnimatedCount = ({
+  count,
+  isLoading,
+}: {
+  count: number;
+  isLoading: boolean;
+}) => {
+  if (isLoading) {
+    return (
+      <span className="inline-block w-8 h-5 bg-stone-400 animate-pulse rounded"></span>
+    );
+  }
+  return <span>{count}</span>;
+};
+
 export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasStartedUpload, setHasStartedUpload] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<CsvRow[]>([]);
   const [dropzoneHidden, setDropzoneHidden] = useState(false);
+  const [downloadCount, setDownloadCount] = useState(0);
+  const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(true);
   // Simple upload flow (no chat UI)
 
-  const totalCount = rows.length;
+  const totalCount = downloadCount;
+
+  useEffect(() => {
+    setIsAnalyticsLoading(true);
+    getDownloadCount()
+      .then(setDownloadCount)
+      .catch(() => setDownloadCount(0))
+      .finally(() => setIsAnalyticsLoading(false));
+  }, []);
 
   const handleFilesDropped = useCallback(async (files: File[]) => {
     setError(null);
@@ -181,7 +207,11 @@ export default function Home() {
                   className="flex flex-col items-center p-5"
                 >
                   <p className="text-slate-700 font-medium">
-                    {totalCount} transactions extracted 🎉
+                    <AnimatedCount
+                      count={totalCount}
+                      isLoading={isAnalyticsLoading}
+                    />{" "}
+                    transactions extracted 🎉
                   </p>
                   {csvBlobUrl && (
                     <>
@@ -298,7 +328,10 @@ export default function Home() {
           </a>
         </span>
         <span className="text-stone-400">
-          <span className="font-bold">{totalCount}</span> statements processed.
+          <span className="font-bold">
+            <AnimatedCount count={totalCount} isLoading={isAnalyticsLoading} />
+          </span>{" "}
+          statements processed.
         </span>
       </footer>
     </div>

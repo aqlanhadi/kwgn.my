@@ -12,7 +12,6 @@ RUN git clone --depth=1 https://${GITHUB_TOKEN}@github.com/aqlanhadi/kwgn-cli &&
     cd kwgn-cli && \
     go mod download && \
     CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /go/bin/kwgn-cli . && \
-   
     # Remove source code and credentials after building to reduce layer size
     cd / && rm -rf /go/src/* /root/.cache/go-build
 
