@@ -1,47 +1,39 @@
-# kwgn UI
+# kwgn.my
 
-A Next.js web interface for the [kwgn](https://github.com/aqlanhadi/kwgn-cli) CLI tool, providing an intuitive way to extract and visualize transaction data from bank statements.
+A lightweight web app that converts PDF bank statements to CSV using the [kwgn CLI tool](https://github.com/aqlanhadi/kwgn-cli).
 
 ## Features
 
-### 🏦 Transaction Extraction
+### 📄 Simple PDF to CSV Conversion
 
-- Upload PDF bank statements from supported banks
-- Automatic processing using the kwgn CLI tool
-- Support for multiple statement types (Maybank CASA/MAE, Maybank Credit Card, Touch 'n Go)
+- **Drag & Drop Interface**: Upload PDF bank statements by dragging files or clicking to browse
+- **Automatic Processing**: Uses the kwgn CLI tool to extract transaction data
+- **CSV Export**: Download processed transactions as CSV files
+- **Transaction Preview**: See a quick preview of the first few transactions before downloading
+- **Multi-file Support**: Process multiple statement files at once
 
-### 📊 Transaction Table
+### 🔒 Privacy-First Design
 
-- **Beautiful tabular display** of extracted transactions with sortable columns
-- **Summary cards** showing account details, totals, and net amounts
-- **Advanced filtering** by transaction type (credit/debit) and account
-- **Search functionality** across descriptions, references, and account names
-- **Export to CSV** for further analysis in Excel or other tools
-- **Multi-file support** - combine transactions from multiple statements
+- **No File Storage**: Files are processed server-side and immediately deleted
+- **Anonymized Analytics**: Only tracks the total number of statements processed
+- **Client-side Processing**: No sensitive data sent to external servers
 
-### 🎨 Modern UI
+### 🏦 Supported Banks
 
-- Built with Next.js 15 and React 19
-- Styled with Tailwind CSS and shadcn/ui components
-- Responsive design that works on desktop and mobile
-- Professional Malaysian Ringgit (MYR) currency formatting
+- **Maybank**: Savings, Current, and Credit Card statements
+- **Touch 'n Go**: e-wallet statements
 
 ## Getting Started
 
 ### Prerequisites
 
-1. **kwgn CLI Tool**: Install the [kwgn CLI](https://github.com/aqlanhadi/kwgn-cli) tool on your system
-2. **Node.js**: Version 18 or higher
-3. **pnpm**: Package manager (or npm/yarn)
+1. **Node.js**: Version 18 or higher
+2. **pnpm**: Package manager (or npm/yarn)
+3. **kwgn CLI**: The app expects the kwgn binary to be available in the system PATH
 
 ### Installation
 
 1. Clone this repository:
-
-```bash
-git clone <repository-url>
-cd kwgn-ui
-```
 
 2. Install dependencies:
 
@@ -49,103 +41,60 @@ cd kwgn-ui
 pnpm install
 ```
 
-3. Set up environment variables:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and set the path to your kwgn configuration:
-
-```
-kwgn_CONFIG_PATH=/path/to/your/kwgn/config.toml
-```
-
-4. Start the development server:
+3. Start the development server:
 
 ```bash
 pnpm dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## Usage
 
-### Processing Bank Statements
-
-1. **Upload Files**: Drag and drop or select PDF bank statements on the home page
-2. **Automatic Processing**: Files are automatically processed when you navigate to the transactions page
-3. **View Results**: See the extracted transaction data in a beautiful table format
-
-### Transaction Table Features
-
-#### Summary Cards
-
-- **Account Information**: View account name, number, and type
-- **Financial Summary**: Total credits, debits, and net amount
-- **Transaction Count**: Number of transactions per file
-
-#### Table Controls
-
-- **Sorting**: Click column headers to sort by sequence, date, type, or amount
-- **Search**: Use the search bar to find specific transactions by description, reference, or account
-- **Filtering**: Filter by transaction type (credit/debit) or specific account
-- **Export**: Download filtered results as CSV for external analysis
-
-#### Table Columns
-
-- **Sequence**: Transaction sequence number from the statement
-- **Date**: Transaction date with proper formatting
-- **Description**: Transaction descriptions (may be multiple lines)
-- **Type**: Credit or Debit with color-coded badges
-- **Amount**: Transaction amount in MYR with proper formatting
-- **Balance**: Account balance after the transaction
-- **Reference**: Transaction reference number
-- **Account**: Account name and number
-
-### Supported Statement Types
-
-The app currently supports:
-
-- **Maybank CASA & MAE**: Current and savings accounts
-- **Maybank Credit Card**: Credit card statements
-- **Touch 'n Go**: e-wallet statements
+1. **Upload Files**: Drag and drop PDF bank statements onto the dropzone or click to browse
+2. **Wait for Processing**: The app will show progress as it processes your files
+3. **Download CSV**: Once processing is complete, download your transaction data as CSV
+4. **Process More**: Click "Extract more" to process additional files
 
 ## Technology Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript
-- **Styling**: Tailwind CSS, shadcn/ui components
-- **Processing**: kwgn CLI tool integration
-- **State Management**: React hooks and Context
-- **File Handling**: Server-side processing with temporary files
+- **Styling**: Tailwind CSS with Motion animations
+- **Processing**: kwgn CLI tool for PDF parsing
+- **Deployment**: Docker container with multi-stage build
 
 ## Development
 
 ### Project Structure
 
 ```
-kwgn-ui/
-├── app/                 # Next.js app router pages
+kwgn-ui-min/
+├── app/                 # Next.js app router
 │   ├── actions.ts      # Server actions for file processing
-│   ├── page.tsx        # Home page with file upload
-│   └── transactions/   # Transaction viewing page
+│   ├── globals.css     # Global styles
+│   ├── layout.tsx      # Root layout
+│   └── page.tsx        # Main page with file upload
 ├── components/         # React components
 │   ├── ui/            # shadcn/ui components
-│   ├── FileDropzone.tsx
-│   └── TransactionTable.tsx
-├── lib/
-│   ├── kwgn/          # kwgn CLI integration
-│   └── utils.ts       # Utility functions
-└── public/            # Static assets
+│   └── FileDropzone.tsx # Drag & drop file interface
+├── lib/               # Utility libraries
+│   ├── analytics.ts   # Plausible analytics integration
+│   ├── csv.ts        # CSV generation utilities
+│   └── kwgn/         # kwgn CLI integration
+└── public/           # Static assets
 ```
 
-### Adding New Statement Types
+### Docker Deployment
 
-To add support for new bank statement types:
+The app includes a Dockerfile for containerized deployment:
 
-1. Update the `extract` function in `lib/kwgn/index.ts` to include the new type
-2. Modify the `processFiles` action in `app/actions.ts` to handle the new type
-3. The transaction table will automatically work with any statement type that follows the kwgn output format
+```bash
+# Build the Docker image
+docker build --build-arg GITHUB_TOKEN=your_token -t kwgn-ui .
+
+# Run the container
+docker run -p 3000:3000 kwgn-ui
+```
 
 ## Contributing
 
@@ -157,9 +106,11 @@ To add support for new bank statement types:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
 
 ## Acknowledgments
 
-- [shadcn/ui](https://ui.shadcn.com/) - Beautiful and accessible UI components
-- [Next.js](https://nextjs.org/) - The React framework for production
+- [kwgn CLI](https://github.com/aqlanhadi/kwgn-cli) - The underlying tool that does the heavy lifting
+- [shadcn/ui](https://ui.shadcn.com/) - UI components
+- [Next.js](https://nextjs.org/) - The React framework
+- [Motion](https://motion.dev/) - Animation library
