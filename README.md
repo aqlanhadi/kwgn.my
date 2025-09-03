@@ -1,15 +1,17 @@
-# KWGN UI
+# kwgn UI
 
-A Next.js web interface for the [KWGN](https://github.com/jethrokuan/kwgn) CLI tool, providing an intuitive way to extract and visualize transaction data from bank statements.
+A Next.js web interface for the [kwgn](https://github.com/aqlanhadi/kwgn-cli) CLI tool, providing an intuitive way to extract and visualize transaction data from bank statements.
 
 ## Features
 
 ### 🏦 Transaction Extraction
+
 - Upload PDF bank statements from supported banks
-- Automatic processing using the KWGN CLI tool
+- Automatic processing using the kwgn CLI tool
 - Support for multiple statement types (Maybank CASA/MAE, Maybank Credit Card, Touch 'n Go)
 
 ### 📊 Transaction Table
+
 - **Beautiful tabular display** of extracted transactions with sortable columns
 - **Summary cards** showing account details, totals, and net amounts
 - **Advanced filtering** by transaction type (credit/debit) and account
@@ -18,6 +20,7 @@ A Next.js web interface for the [KWGN](https://github.com/jethrokuan/kwgn) CLI t
 - **Multi-file support** - combine transactions from multiple statements
 
 ### 🎨 Modern UI
+
 - Built with Next.js 15 and React 19
 - Styled with Tailwind CSS and shadcn/ui components
 - Responsive design that works on desktop and mobile
@@ -27,34 +30,39 @@ A Next.js web interface for the [KWGN](https://github.com/jethrokuan/kwgn) CLI t
 
 ### Prerequisites
 
-1. **KWGN CLI Tool**: Install the [KWGN CLI](https://github.com/jethrokuan/kwgn) tool on your system
+1. **kwgn CLI Tool**: Install the [kwgn CLI](https://github.com/aqlanhadi/kwgn-cli) tool on your system
 2. **Node.js**: Version 18 or higher
 3. **pnpm**: Package manager (or npm/yarn)
 
 ### Installation
 
 1. Clone this repository:
+
 ```bash
 git clone <repository-url>
 cd kwgn-ui
 ```
 
 2. Install dependencies:
+
 ```bash
 pnpm install
 ```
 
 3. Set up environment variables:
+
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and set the path to your KWGN configuration:
+Edit `.env` and set the path to your kwgn configuration:
+
 ```
-KWGN_CONFIG_PATH=/path/to/your/kwgn/config.toml
+kwgn_CONFIG_PATH=/path/to/your/kwgn/config.toml
 ```
 
 4. Start the development server:
+
 ```bash
 pnpm dev
 ```
@@ -72,17 +80,20 @@ pnpm dev
 ### Transaction Table Features
 
 #### Summary Cards
+
 - **Account Information**: View account name, number, and type
 - **Financial Summary**: Total credits, debits, and net amount
 - **Transaction Count**: Number of transactions per file
 
 #### Table Controls
+
 - **Sorting**: Click column headers to sort by sequence, date, type, or amount
 - **Search**: Use the search bar to find specific transactions by description, reference, or account
 - **Filtering**: Filter by transaction type (credit/debit) or specific account
 - **Export**: Download filtered results as CSV for external analysis
 
 #### Table Columns
+
 - **Sequence**: Transaction sequence number from the statement
 - **Date**: Transaction date with proper formatting
 - **Description**: Transaction descriptions (may be multiple lines)
@@ -95,15 +106,16 @@ pnpm dev
 ### Supported Statement Types
 
 The app currently supports:
+
 - **Maybank CASA & MAE**: Current and savings accounts
-- **Maybank Credit Card**: Credit card statements  
+- **Maybank Credit Card**: Credit card statements
 - **Touch 'n Go**: e-wallet statements
 
 ## Technology Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **Styling**: Tailwind CSS, shadcn/ui components
-- **Processing**: KWGN CLI tool integration
+- **Processing**: kwgn CLI tool integration
 - **State Management**: React hooks and Context
 - **File Handling**: Server-side processing with temporary files
 
@@ -122,7 +134,7 @@ kwgn-ui/
 │   ├── FileDropzone.tsx
 │   └── TransactionTable.tsx
 ├── lib/
-│   ├── kwgn/          # KWGN CLI integration
+│   ├── kwgn/          # kwgn CLI integration
 │   └── utils.ts       # Utility functions
 └── public/            # Static assets
 ```
@@ -133,7 +145,7 @@ To add support for new bank statement types:
 
 1. Update the `extract` function in `lib/kwgn/index.ts` to include the new type
 2. Modify the `processFiles` action in `app/actions.ts` to handle the new type
-3. The transaction table will automatically work with any statement type that follows the KWGN output format
+3. The transaction table will automatically work with any statement type that follows the kwgn output format
 
 ## Contributing
 
@@ -149,6 +161,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-- [KWGN CLI](https://github.com/jethrokuan/kwgn) - The powerful CLI tool for extracting transaction data
 - [shadcn/ui](https://ui.shadcn.com/) - Beautiful and accessible UI components
 - [Next.js](https://nextjs.org/) - The React framework for production
